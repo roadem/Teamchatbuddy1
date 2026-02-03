@@ -142,15 +142,21 @@ public class ConfigurationFile {
             setProperty("TTS_ApiGoogle_pitch_en","130");
             setProperty("TTS_ApiGoogle_speed_fr","70");
             setProperty("TTS_ApiGoogle_speed_en","70");
+            props.addPropertyComment("TTS_ApiGoogle_URL", "Google Cloud TTS API base URL");
+            setProperty("TTS_ApiGoogle_URL","https://texttospeech.googleapis.com/v1/text:synthesize?");
             props.addPropertyComment("TTS_ApiGoogle_Voice_Type", "Voice type : Standard/Wavenet");
             props.addPropertyComment("TTS_ApiGoogle_Voice_Type", "If no voice is specified for a language in TTS_ApiGoogle_Language_Voice, the system uses the voice type defined in TTS_ApiGoogle_Voice_Type and appends '-A' as the default voice (e.g., Standard-A) ");
             setProperty("TTS_ApiGoogle_Voice_Type","Standard");
             setProperty("TTS_ApiGoogle_Language_Voice","[fr:Wavenet-C],[en:Standard-C]");
             props.addPropertyComment("TTS_OpenAI_ApiEndpoint", "TTS OpenAI parameters");
             setProperty("TTS_OpenAI_ApiEndpoint","/v1/audio/speech");
+            props.addPropertyComment("TTS_OpenAI_Model", "Available OpenAI TTS models: tts-1, tts-1-hd, gpt-4o-mini-tts");
             setProperty("TTS_OpenAI_Model","tts-1");
+            props.addPropertyComment("TTS_OpenAI_Voice", "Voices for tts-1 / tts-1-hd: alloy, ash, coral, echo, fable, onyx, nova, sage, shimmer");
+            props.addPropertyComment("TTS_OpenAI_Voice", "Voices for gpt-4o-mini-tts: alloy, ash, ballad, coral, echo, fable, nova, onyx, sage, shimmer, verse, marin, cedar");
             setProperty("TTS_OpenAI_Voice","sage");
             setProperty("TTS_OpenAI_Speed","1");
+            props.addPropertyComment("TTS_OpenAI_Instructions", "This instruction parameter is only used by the gpt-4o-mini-tts model.");
             setProperty("TTS_OpenAI_Instructions","Parle avec un ton heureux et enfantin.");
 
 

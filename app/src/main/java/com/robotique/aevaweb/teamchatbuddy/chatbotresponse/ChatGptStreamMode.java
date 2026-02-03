@@ -415,7 +415,7 @@ public class ChatGptStreamMode {
 
             InputStreamReader inputStreamReader = new InputStreamReader(inputStream);
             BufferedReader reader = new BufferedReader(inputStreamReader);
-            String fileName = "ChatGPT-recv-stream-ssml";
+            String fileName = "ChatGPT-recv-stream";
             StringBuilder formattedContent = new StringBuilder();
             String line;
             int responseTotalTokens = 0;
@@ -735,7 +735,7 @@ public class ChatGptStreamMode {
     }
 
     private void onNewPhrase() {
-        Log.w("MYA_API_Google ssml", "onNewPhrase--phrase: " + phrase);
+        Log.w("MYA", "onNewPhrase--phrase: " + phrase);
         Log.w("MARIA_TEST", "Phrase: " + phrase);
         if (app.getParamFromFile("Response_filter","TeamChatBuddy.properties")!=null && !app.getParamFromFile("Response_filter","TeamChatBuddy.properties").trim().equalsIgnoreCase("")){
             phrase = app.applyFilters(app.getParamFromFile("Response_filter","TeamChatBuddy.properties"),phrase);

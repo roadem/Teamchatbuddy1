@@ -98,7 +98,7 @@ public class TtsGoogleC implements AutoCloseable {
         }
     }
 
-    public void start(String key, String text) {
+    public void start(String url, String text) {
         if (voiceSelection == null)
             throw new IllegalStateException("VoiceSelectionParams manquant");
         if (audioConfig == null)
@@ -143,14 +143,15 @@ public class TtsGoogleC implements AutoCloseable {
                 body.add("audioConfig", cfg);
 
                 // --- URL ---
-                String TTS_URL = "https://texttospeech.googleapis.com/v1/text:synthesize?key=" + key;
+                String TTS_URL = "https://texttospeech.googleapis.com/v1/text:synthesize?key=" ;
                 Log.i("MYA_API_Google", "URL API TTS : " + TTS_URL);
+                Log.d("MYA_API_Google", "start: "+url);
 
                 Map<String, String> headers = new HashMap<>();
                 headers.put("Content-Type", "application/json");
 
                 HttpResponse httpResp = HttpClientUtils.sendPost(
-                        TTS_URL,
+                        url,
                         gson.toJson(body),
                         headers,
                         60000
