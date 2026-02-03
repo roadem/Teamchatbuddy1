@@ -84,7 +84,6 @@ public class TtsOpenAI implements AutoCloseable {
 
         MediaType JSON = MediaType.get("application/json; charset=utf-8");
 
-        Log.w("MYA", "generateSpeech: " + text);
         try{
             // Corps JSON de la requête
             String apiUrl =
@@ -134,42 +133,44 @@ public class TtsOpenAI implements AutoCloseable {
 
                 @Override
                 public void onResponse(Call call, Response response) throws IOException {
-                    long startTotal = System.nanoTime(); // Début total
-                    long startDownload = System.nanoTime(); // Pour mesurer juste le téléchargement
 
                     if (!response.isSuccessful()) {
                         mTtsListener.onError();
                         return;
                     }
 
-                    // --- Téléchargement du MP3 ---
-                    byte[] audioBytes = response.body().bytes();
-                    long endDownload = System.nanoTime();
-                    Log.w("OpenAITTS", "Temps téléchargement (ms): " + ((endDownload - startDownload) / 1_000_000));
-
-                    // --- Écriture fichier ---
-                    long startWrite = System.nanoTime();
+                    // Écrire dans un fichier MP3
                     File temp = File.createTempFile("tts_openai_", ".mp3");
-                    try (FileOutputStream fos = new FileOutputStream(temp)) {
-                        fos.write(audioBytes);
-                    }
-                    long endWrite = System.nanoTime();
-                    Log.w("OpenAITTS", "Temps écriture fichier (ms): " + ((endWrite - startWrite) / 1_000_000));
+                    try {
+                        byte[] audioBytes = response.body().bytes();
 
-                    // --- Extraction durée et décision trim ---
-                    long startMeta = System.nanoTime();
+                        FileOutputStream fos = new FileOutputStream(temp);
+                        fos.write(audioBytes);
+                        fos.close();
+
+                    } catch (IOException e) {
+                        Log.e("OpenAITTS", "Erreur lecture flux : " + e.getMessage());
+                        mTtsListener.onError();
+                        return;
+                    }
+
+
+
                     MediaMetadataRetriever mmr = new MediaMetadataRetriever();
                     mmr.setDataSource(temp.getAbsolutePath());
                     String durationStr = mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION);
                     long durationMs = Long.parseLong(durationStr);
                     mmr.release();
-                    long endMeta = System.nanoTime();
-                    Log.w("OpenAITTS", "Temps extraction metadata (ms): " + ((endMeta - startMeta) / 1_000_000));
 
-                    long startTrimPlay = System.nanoTime();
-                    if (durationMs > 700) {
-                        // --- Trim silence via FFmpeg ---
+                    long seuilMs = 700;
+                    boolean appliquerNettoyage = durationMs > seuilMs;
+
+                    Log.w("OpenAITTS", "durationMs: "+durationMs);
+
+
+                    if (appliquerNettoyage){// --- TRIM SILENCE (minimal patch) ---
                         File trimmed = File.createTempFile("tts_openai_trim_", ".mp3", temp.getParentFile());
+
                         String[] cmd = {
                                 "-y",
                                 "-i", temp.getAbsolutePath(),
@@ -177,19 +178,16 @@ public class TtsOpenAI implements AutoCloseable {
                                 "-c:a", "mp3",
                                 trimmed.getAbsolutePath()
                         };
+
                         FFmpeg.executeAsync(cmd, (id, rc) -> {
                             File toPlay = (rc == 0 ? trimmed : temp);
+
                             new Handler(Looper.getMainLooper())
-                                    .post(() -> {
-                                        playAudio(toPlay, mTtsListener);
-                                        long endTotal = System.nanoTime();
-                                        Log.w("OpenAITTS", "Temps total jusqu'à lecture (ms): " + ((endTotal - startTotal) / 1_000_000));
-                                    });
+                                    .post(() -> playAudio(toPlay, mTtsListener));
                         });
-                    } else {
+                    }
+                    else{
                         playAudio(temp, mTtsListener);
-                        long endTotal = System.nanoTime();
-                        Log.w("OpenAITTS", "Temps total jusqu'à lecture (ms): " + ((endTotal - startTotal) / 1_000_000));
                     }
                 }
 
