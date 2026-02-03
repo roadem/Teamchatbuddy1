@@ -1898,7 +1898,7 @@ public class TeamChatBuddyApplication extends BuddyApplication {
                             speechRecognizer.setRecognitionListener(new RecognitionListener() {
                                 @Override
                                 public void onReadyForSpeech(Bundle bundle) {
-                                    Log.e(TAG, "onReadyForSpeech");
+                                    //Log.e(TAG, "onReadyForSpeech");
                                 }
 
                                 @Override
@@ -1922,7 +1922,7 @@ public class TeamChatBuddyApplication extends BuddyApplication {
 
                                 @Override
                                 public void onEndOfSpeech() {
-                                    Log.e(TAG, "Hotword onEndOfSpeech listening  : ");
+                                    //Log.e(TAG, "Hotword onEndOfSpeech listening  : ");
                                 }
 
                                 @Override
@@ -1992,14 +1992,14 @@ public class TeamChatBuddyApplication extends BuddyApplication {
 
                                 @Override
                                 public void onPartialResults(Bundle bundle) {
-                                    Log.e(TAG, "Hotword onPartialResults listening  : ");
+                                    //Log.e(TAG, "Hotword onPartialResults listening  : ");
                                     ArrayList<String> data = bundle.getStringArrayList(android.speech.SpeechRecognizer.RESULTS_RECOGNITION);
                                     if (data!=null && data.size()>0) {
                                         Log.e(TAG, "Hotword result onPartialResults  : " + data.get(0));
                                         checkTheHotword(data.get(0),"listening");
                                     }
                                     else {
-                                        Log.e(TAG, "Hotword result onPartialResults size = 0 : " );
+                                        //Log.e(TAG, "Hotword result onPartialResults size = 0 : " );
                                     }
                                 }
 
@@ -3345,6 +3345,7 @@ public class TeamChatBuddyApplication extends BuddyApplication {
 
         Log.i("FCH_DEBUG", "startSpeakingSplittedText "+ Arrays.toString(texteToSpeakSplitted) + " , " + type);
 
+        Log.i("MYA_Mouth", "INVITATION speak: startSpeakingSplittedText");
 
         setSpeaking(true);
         Handler handler_all = new Handler(Looper.getMainLooper());
@@ -3364,6 +3365,7 @@ public class TeamChatBuddyApplication extends BuddyApplication {
 
                     Log.e("FCH_DEBUG", "call startSpeaking");
                     //setLed("speaking");
+                    Log.i("MYA_Mouth", "splitNews: "+texteToSpeak.contains(";splitNews;"));
                     if(texteToSpeak.contains(";splitNews;")){
                         //          texteToSpeak = texteToSpeak.replaceAll("news;","");
                         BuddySDK.Speech.startSpeaking(
@@ -3442,6 +3444,16 @@ public class TeamChatBuddyApplication extends BuddyApplication {
 
                                 @Override
                                 public void onError(String iError) throws RemoteException {
+                                    Log.i("MYA_Mouth", "INVITATION speak: onError ----- " + iError);
+                                    if(iError.equalsIgnoreCase("StandaloneCoroutine was cancelled")){
+                                        ttsTimeoutRunnable = () -> {
+                                            if (ttsInProgress) {
+                                                notifyObservers("TTS_timeout;" + texteToSpeakSplitted[currentIndexText]);
+                                            }
+                                        };
+
+                                        ttsHandler.postDelayed(ttsTimeoutRunnable, 3000);
+                                    }
                                     //Log.e(TAG, "Erreur pendant la prononciation 2 : " + iError);
                                     Log.e("test_welcome", "Erreur pendant la prononciation 2 : " + iError);
 
@@ -3454,11 +3466,13 @@ public class TeamChatBuddyApplication extends BuddyApplication {
                                     Log.e("test_welcome", "Erreur pendant la prononciation Stop_TTS_ReadSpeaker : " + Stop_TTS_ReadSpeaker);
 
                                     if (!Stop_TTS_ReadSpeaker) {
+                                        Log.i("MYA_Mouth", "INVITATION speak: onError ----1 " + iError);
                                         Log.w("FCH_DEBUG", "onError 1 ");
                                         Handler handler = new Handler(Looper.getMainLooper());
                                         handler.postDelayed(new Runnable() {
                                             @Override
                                             public void run() {
+                                                Log.i("MYA_Mouth", "INVITATION speak: onError ----2 " + iError);
                                                 Log.w("FCH_DEBUG", "onError 2");
                                                 startSpeakingSplittedText(texteToSpeak, expression, type, texteToSpeakSplitted);
                                             }
@@ -3559,7 +3573,7 @@ public class TeamChatBuddyApplication extends BuddyApplication {
                 protected Void doInBackground(Void... voids) {
                     try {
                         SystemClock.sleep(2000);
-                        getGoogleCloudTTS().start(getParamFromFile("ApiGoogle_Key", configurationFilePseudo), article);
+                        getGoogleCloudTTS().start(getParamFromFile("TTS_ApiGoogle_URL", configurationFilePseudo)+ "key=" +getParamFromFile("ApiGoogle_Key", configurationFilePseudo), article);
                     } catch (Exception e) {
                         e.printStackTrace();
                     }
@@ -3634,6 +3648,10 @@ public class TeamChatBuddyApplication extends BuddyApplication {
      * @param texteToSpeak : message à dire par Buddy.
      * @param expression : jouer un mouvement spécial de la bouche [SPEAK_ANGRY / NO_FACE / SPEAK_HAPPY / SPEAK_NEUTRAL]
      */
+    private final Handler ttsHandler = new Handler(Looper.getMainLooper());
+    private Runnable ttsTimeoutRunnable;
+    private boolean ttsInProgress = false;
+
     public void speakTTS(final String texteToSpeak, LabialExpression expression, String type) {
         Log.w("TEST_voix","text To Speak : "+texteToSpeak);
         Log.i("TEST_voix","Selected Language in app : "+getCurrentLanguage());
@@ -3676,6 +3694,7 @@ public class TeamChatBuddyApplication extends BuddyApplication {
             setTTSAfterDetectingLanguage();
             Log.i("TEST_voix","ConfigFile --> Text_To_Speech_List : "+getParamFromFile("Text_To_Speech_List",configurationFilePseudo));
 
+            Log.i("MYA_Mouth", "getChosenTTS : "+getChosenTTS());
             if (getChosenTTS().trim().equalsIgnoreCase("ReadSpeaker") && usingReadSpeaker) {
                 Log.i("TEST_voix","SPEAK using TTS ReadSpeaker ");
                 if (getCurrentLanguage().equals("en")){
@@ -3751,6 +3770,7 @@ public class TeamChatBuddyApplication extends BuddyApplication {
                     showToast(toast_tts_android_indispo);
                 }
                 if (texteToSpeak.contains(";splitNews;")) {
+                    Log.i("MYA_Mouth", "------------------ splitNews -------------------");
                     String[] articlesArray = texteToSpeak.split(";splitNews;");
                     List<String> articlesList = new ArrayList<>();
                     for (String article : articlesArray) {
@@ -3841,6 +3861,7 @@ public class TeamChatBuddyApplication extends BuddyApplication {
 
                         @Override
                         public void onError(String utteranceId) {
+                            Log.i("MYA_Mouth", "onError TTS Android : "+utteranceId);
                             Log.e(TAG, "Erreur pendant la prononciation " + utteranceId);
                             if (type.equals("timeOutExpired")) {
                                 timeoutExpired = false;
@@ -3862,6 +3883,8 @@ public class TeamChatBuddyApplication extends BuddyApplication {
                                 storedResponse = "";
                                 setLanguageDetected("");
                             } else {
+
+                                Log.i("MYA_Mouth", "onError TTS Android : should... ");
                                 try {
                                     BuddySDK.UI.setLabialExpression(LabialExpression.SPEAK_NEUTRAL);
                                 } catch (Exception e) {
@@ -3874,6 +3897,7 @@ public class TeamChatBuddyApplication extends BuddyApplication {
                         }
                     });
                 } else {
+                    Log.i("MYA_Mouth", "------------------ not splitNews -------------------"+texteToSpeak);
                     // Lecture normale
                     int result = tts_android.speak(texteToSpeak, TextToSpeech.QUEUE_FLUSH, null, "TTS_UTTERANCE_ID");
                     if (result == -1) {
@@ -3883,7 +3907,26 @@ public class TeamChatBuddyApplication extends BuddyApplication {
                             @Override
                             public void onStart(String utteranceId) {
                                 try {
+                                    Log.i("MYA_Mouth", "------------------ UtteranceProgressListener start -------------------");
                                     BuddySDK.UI.setLabialExpression(LabialExpression.SPEAK_NEUTRAL);
+                                    ttsInProgress = true;
+                                    ttsTimeoutRunnable = () -> {
+                                        if (ttsInProgress) {
+                                            Log.e(TAG, "TTS bloqué > 3s après onStart (fallback déclenché)");
+
+                                            ttsInProgress = false;
+
+                                            try {
+                                                tts_android.stop();
+                                            } catch (Exception ignored) {}
+
+                                            notifyObservers("TTS_timeout;" + texteToSpeak);
+                                            Toast.makeText(getApplicationContext(), "TTS reset", Toast.LENGTH_SHORT).show();
+                                        }
+                                    };
+
+                                    ttsHandler.postDelayed(ttsTimeoutRunnable, 3000);
+
                                 } catch (Exception e) {
                                     Log.e(TAG, "BuddySDK Exception  " + e);
                                 }
@@ -3891,7 +3934,13 @@ public class TeamChatBuddyApplication extends BuddyApplication {
 
                             @Override
                             public void onDone(String utteranceId) {
+                                if (ttsTimeoutRunnable != null) {
+                                    ttsHandler.removeCallbacks(ttsTimeoutRunnable);
+                                    ttsTimeoutRunnable = null;
+                                }
+                                ttsInProgress = false;
                                 try {
+                                    Log.i("MYA_Mouth", "------------------ UtteranceProgressListener done -------------------");
                                     BuddySDK.UI.setLabialExpression(LabialExpression.NO_EXPRESSION);
                                 } catch (Exception e) {
                                     Log.e(TAG, "BuddySDK Exception  " + e);
@@ -3930,6 +3979,12 @@ public class TeamChatBuddyApplication extends BuddyApplication {
 
                             @Override
                             public void onError(String utteranceId) {
+                                if (ttsTimeoutRunnable != null) {
+                                    ttsHandler.removeCallbacks(ttsTimeoutRunnable);
+                                    ttsTimeoutRunnable = null;
+                                }
+                                ttsInProgress = false;
+                                Log.i("MYA_Mouth", "------------------ onError -------------------"+utteranceId);
                                 Log.e(TAG, "Erreur pendant la prononciation 1 " + utteranceId);
                                 if (type.equals("timeOutExpired")) {
                                     timeoutExpired = false;
@@ -3955,6 +4010,7 @@ public class TeamChatBuddyApplication extends BuddyApplication {
 
                                 } else {
                                     try {
+                                        Log.i("MYA_Mouth", "------------------ SPEAK_NEUTRAL -------------------");
                                         BuddySDK.UI.setLabialExpression(LabialExpression.SPEAK_NEUTRAL);
                                     } catch (Exception e) {
                                         Log.e(TAG, "BuddySDK Exception  " + e);
@@ -4575,7 +4631,7 @@ public class TeamChatBuddyApplication extends BuddyApplication {
                                 Log.e("MRA", "speakGoogleCloudTTS  onError-----------  ");
                             }
                         });
-                        getGoogleCloudTTS().start(getParamFromFile("ApiGoogle_Key", configurationFilePseudo), texteToSpeak);
+                        getGoogleCloudTTS().start(getParamFromFile("TTS_ApiGoogle_URL", configurationFilePseudo)+ "key=" +getParamFromFile("ApiGoogle_Key", configurationFilePseudo), texteToSpeak);
 
                     }
                 }

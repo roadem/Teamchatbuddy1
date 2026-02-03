@@ -1303,6 +1303,7 @@ public class MainFragment extends Fragment implements IDBObserver{
                             Log.i("OpenAITTS", "------------------------ click mouth isListeningHotw = false ");
                             if(!isListeningFreeSpeech ) {
                                 if(mouth_messages!=null && mouth_messages.equalsIgnoreCase("Yes")){
+                                    Log.i("MYA_Mouth", "mouth click commencer l'écoute ");
                                     speakMouthMessages("listen", new IMouthMessageCallback() {
                                         @Override
                                         public void onEnd(String s) {
@@ -1380,6 +1381,8 @@ public class MainFragment extends Fragment implements IDBObserver{
                                 teamChatBuddyApplication.traitementAudio(false);
                             }
                             if(mouth_messages!=null && mouth_messages.equalsIgnoreCase("Yes")){
+
+                                Log.i("MYA_Mouth", "mouth click arrêter l'écoute ");
                                 speakMouthMessages("stop", new IMouthMessageCallback() {
                                     @Override
                                     public void onEnd(String s) {
@@ -1396,7 +1399,7 @@ public class MainFragment extends Fragment implements IDBObserver{
     };
 
     public void speakMouthMessages(String type, IMouthMessageCallback iMouthMessageCallback){
-        Log.i(TAG, "speakMouthMessages : "+type);
+        Log.i("MYA_Mouth", "speakMouthMessages : "+type);
         this.iMouthMessageCallback = iMouthMessageCallback;
         if(type.equals("listen")){
             String mouth_listen_fr = teamChatBuddyApplication.getParamFromFile("Mouth_listen_fr", "TeamChatBuddy.properties");
@@ -1421,6 +1424,7 @@ public class MainFragment extends Fragment implements IDBObserver{
                     Log.d(TAG_TRACKING, "Random French Invitation: " + randomMessagesFR);
                     teamChatBuddyApplication.setActivityClosed(false);
                     speak(randomMessagesFR, "INVITATION");
+                    Log.i("MYA_Mouth", "was spoke");
                 }
                 else {
                     if(iMouthMessageCallback != null) iMouthMessageCallback.onEnd("ConfigFile do not contain French Invitation");
@@ -1513,6 +1517,7 @@ public class MainFragment extends Fragment implements IDBObserver{
      */
     @Override
     public void update(String message) throws IOException {
+        Log.d("MYA_Mouth", "update: "+ message);
         if (message != null) {
             Log.e(TAG,"message update main fragment --> "+message);
 
@@ -2630,6 +2635,45 @@ public class MainFragment extends Fragment implements IDBObserver{
 
             else if (message.equals("STOP_ALERT")){
                 AlertManager.getInstance(_parentActivity).stop();
+            }
+
+            else if (message.contains("TTS_timeout")) {
+                getActivity().runOnUiThread(() -> {
+                    Log.e(TAG, " TTS_success");
+                    lastLookingAtCameraTimeToCloseApp = System.currentTimeMillis();
+                    personDetectedTimeToCloseApp = System.currentTimeMillis();
+                    teamChatBuddyApplication.setAppIsCurrentlyDealingWithTheQuestion(false);
+                    buddy_texte_qst_lyt.setVisibility(View.INVISIBLE);
+                    buddy_texte_resp_lyt.setVisibility(View.INVISIBLE);
+                    buddy_texte_qst.setMovementMethod(null);
+                    buddy_texte_resp.setMovementMethod(null);
+                    if (teamChatBuddyApplication.getParamFromFile("Number_clicks_options","TeamChatBuddy.properties")!=null ){
+                        String Number_clicks_options = teamChatBuddyApplication.getParamFromFile("Number_clicks_options","TeamChatBuddy.properties");
+                        if(Number_clicks_options.equals("")||Integer.parseInt(Number_clicks_options)<=0){
+                            lyt_open_menu_settings.setVisibility(View.INVISIBLE);
+                        }
+                        else{
+                            lyt_open_menu_settings.setVisibility(View.VISIBLE);
+                        }
+                    }else {
+                        lyt_open_menu_settings.setVisibility(View.INVISIBLE);
+                    }
+                    lyt_open_menu_chat.setVisibility(View.VISIBLE);
+                    isSpeaking = false;
+                    if (iInvitationCallback != null)
+                        iInvitationCallback.onEnd("INVITATION_END");
+                    if (iStartMessageCallback != null)
+                        iStartMessageCallback.onEnd("STARTMESSAGE_END");
+                    if (iMouthMessageCallback != null)
+                        iMouthMessageCallback.onEnd("MOUTHMESSAGE_END");
+                });
+                Log.e(TAG, " TTS_success 1");
+
+                if (handler != null && runnable != null) {
+                    handler.removeCallbacks(runnable);
+                    handler.removeCallbacksAndMessages(null);
+                }
+
             }
         }
     }
@@ -3985,7 +4029,7 @@ public class MainFragment extends Fragment implements IDBObserver{
 
     private void speak(final String texte, String type) {
         teamChatBuddyApplication.listeningState = "speaking";
-        Log.e("MYA_YAKINE","listeningState in speak");
+        Log.e("MYA_Mouth","listeningState in speak");
         Log.e("MYA_QR_H_","Start speaking receive");
         Log.e("TEAMCHAT_BUDDY_TRACKING"," --- speak("+texte+") ---type="+type+" isActivityClosed="+teamChatBuddyApplication.isActivityClosed());
         isSpeaking = true;
@@ -4195,6 +4239,7 @@ public class MainFragment extends Fragment implements IDBObserver{
                         }
                     }
                     else if(type.equals("INVITATION")){
+                        Log.i("MYA_Mouth", "INVITATION speak");
                         Log.e("TEAMCHAT_BUDDY_TRACKING"," --- speakTTS from speak Main");
                         if (settingClass.getSwitchVisibility().equals( "true" )) {
                             String stripSSML = teamChatBuddyApplication.stripSSML(texte);
@@ -4228,6 +4273,7 @@ public class MainFragment extends Fragment implements IDBObserver{
                             buddy_texte_resp.scrollTo( 0, 0 );
                         }
                         teamChatBuddyApplication.speakTTS(texte, LabialExpression.SPEAK_NEUTRAL,type);
+                        Log.i("MYA_Mouth", "INVITATION after speak");
                     }
                     else if (type.equals("STARTMESSAGE")){
                         teamChatBuddyApplication.speakTTS(texte, LabialExpression.SPEAK_NEUTRAL,type);
