@@ -1514,6 +1514,7 @@ public class SettingsFragment extends Fragment implements IDBObserver, LanguageD
         });
     }
     public void setLanguageText(){
+        if (!isAdded()) return;
         if(teamChatBuddyApplication.getLangue().getNom().equals("Anglais")){
             menu_title.setText(R.string.menu_title_en);
             menu_option_commande_textView.setText(R.string.menu_option_commande_en);
@@ -1672,8 +1673,11 @@ public class SettingsFragment extends Fragment implements IDBObserver, LanguageD
 
     private IMLKitDownloadCallback imlKitDownloadCallback = new IMLKitDownloadCallback() {
         @Override
-        public void onDownloadEnd(boolean success,String english_or_french) {
-            if(success){
+        public void onDownloadEnd(boolean success, String english_or_french) {
+            // Vérifie que le fragment est attaché avant toute manipulation UI
+            if (!isAdded()) return;
+
+            if (success) {
                 switch (english_or_french) {
                     case "english":
                         english_is_downloaded = true;
