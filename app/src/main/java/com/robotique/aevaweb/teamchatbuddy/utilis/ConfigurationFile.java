@@ -256,7 +256,7 @@ public class ConfigurationFile {
 
             props.addPropertyComment("Pattern_End_Phrase","");
             props.addPropertyComment("Pattern_End_Phrase","Set characters marking the end of a sentence using a regular expression for streaming TTS, fill with '</speak>' if you want to handle SSML blocks with Google Cloud TTS");
-            setProperty("Pattern_End_Phrase","[.;!?][ ]{1,3}|:\\s*|\\n");
+                setProperty("Pattern_End_Phrase","$^"); // Désactive la coupure automatique, le TTS lira toute la phrase
 
             props.addPropertyComment("Silence_time","");
             props.addPropertyComment("Silence_time","Manage end of speech detection");
@@ -359,7 +359,7 @@ public class ConfigurationFile {
             setProperty("Speak_color","blue");
 
             props.addPropertyComment("Mouth_messages","");
-            setProperty("Mouth_messages","No");
+            setProperty("Mouth_messages","Yes");
 
             String[] Mouth_listen_fr = {"Comment puis-je vous aider ?/Que puis-je faire pour vous ?/Comment puis-je vous assister ?/Y a-t-il quelque chose avec laquelle je peux vous aider ?/Y a-t-il quelque chose que je peux faire pour vous ?/Comment puis-je vous soutenir ? Y a-t-il quelque chose avec laquelle je peux vous être utile ?"};
             String[] Mouth_speak_fr = {"D'accord, j'arrête d'écouter/Très bien, je me tais/Pas de problème, je fais une pause/Compris, je n'écoute plus/Bien sûr, je suis en attente/Écoute désactivée"};

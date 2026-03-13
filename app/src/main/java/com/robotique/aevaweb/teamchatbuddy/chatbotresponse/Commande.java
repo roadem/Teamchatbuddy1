@@ -105,6 +105,7 @@ public class Commande {
     private String imeiFeeder;
     public static MediaPlayer radioPlayer;
     public static MediaPlayer musicPlayer;
+    private final Handler mainHandler = new Handler(Looper.getMainLooper());
     private String historicMessages = "messages";
     private String content= "content";
     private String langueFr = "Français";
@@ -3885,7 +3886,7 @@ public class Commande {
                             });
                             e.printStackTrace();
                         }
-                        playMusic(outputFile);
+                        new Handler(Looper.getMainLooper()).post(() -> playMusic(outputFile));
                     } catch (Exception e) {
                         Log.e(TAG, "generateMusic ERROR " + e);
                         e.printStackTrace();
@@ -4875,7 +4876,8 @@ public class Commande {
                             JSONObject streamsObject = streamsArray.getJSONObject(0);
                             String url = streamsObject.getString("url");
                             Log.i(TAG, "Réponse Radio : URL : " + url);
-                            playRadio(url);
+                            String finalUrl = url;
+                            mainHandler.post(() -> playRadio(finalUrl));
                         } else {
                             // Gestion erreur HTTP radioResponse
                             if (radioResponse.body != null) {
@@ -7116,6 +7118,7 @@ public class Commande {
         CMD_STOP_RADIO();
         radioPlayer = new MediaPlayer();
         teamChatBuddyApplication.setPlayingRadio(true);
+        Log.i("RADIO_DEBUG", "playRadio() → isPlayingRadio=true, isOnApp=" + teamChatBuddyApplication.isOnApp + ", url=" + radioUrl);
         radioPlayer.setAudioAttributes(new AudioAttributes.Builder()
                 .setUsage(AudioAttributes.USAGE_MEDIA)
                 .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
@@ -7123,6 +7126,7 @@ public class Commande {
         try {
             radioPlayer.setDataSource(radioUrl);
             radioPlayer.prepareAsync();
+            Log.i("RADIO_DEBUG", "prepareAsync() lancé");
             radioPlayer.setVolume(0.5f,0.5f);
         } catch (IOException e) {
             Log.e(TAG, "Erreur lors de la configuration du lecteur audio", e);
@@ -7131,7 +7135,13 @@ public class Commande {
         radioPlayer.setOnPreparedListener(new MediaPlayer.OnPreparedListener() {
             @Override
             public void onPrepared(MediaPlayer mp) {
-                radioPlayer.start();
+                Log.i("RADIO_DEBUG", "onPrepared() → isOnApp=" + teamChatBuddyApplication.isOnApp + ", isPlayingRadio=" + teamChatBuddyApplication.isPlayingRadio());
+                if (teamChatBuddyApplication.isOnApp) {
+                    Log.i("RADIO_DEBUG", "onPrepared() → start() appelé");
+                    radioPlayer.start();
+                } else {
+                    Log.w("RADIO_DEBUG", "onPrepared() → app en pause, start() ignoré");
+                }
             }
         });
 
@@ -7204,7 +7214,9 @@ public class Commande {
                     @Override
                     public void onTranslated(String translatedText) {
                         teamChatBuddyApplication.setPlayingMusic(true);
-                        musicPlayer.start();
+                        if (teamChatBuddyApplication.isOnApp) {
+                            musicPlayer.start();
+                        }
                         if (translatedText.contains("No_message_defined")) {
                             teamChatBuddyApplication.setTimeToExecuteNextCommande(true);
                             teamChatBuddyApplication.notifyObservers("commandResponse;SPLIT;CANCEL");

@@ -22,6 +22,7 @@ plugins {
     id 'com.chaquo.python' version '12.0.1' apply false
     id "org.sonarqube" version "4.2.1.3168"
 }
+
 allprojects {
     repositories {
         google()
@@ -31,8 +32,8 @@ allprojects {
         maven { url 'https://maven.google.com' }
         maven { url "https://bluefrogrobotics.jfrog.io/artifactory/bluefrogrobotics-libs-release-local/"
             credentials{
-                username "MAVEN_USER" // NOTE: Do not commit !
-                password "MAVEN_PASSWORD" // NOTE: Do not commit !
+                username "aevaweb-boris" // NOTE: Do not commit !
+                password "7S9gS6K&#w18Im" // NOTE: Do not commit !
             }
         }
 

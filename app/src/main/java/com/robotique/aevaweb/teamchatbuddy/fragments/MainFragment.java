@@ -617,7 +617,7 @@ public class MainFragment extends Fragment implements IDBObserver{
     private Runnable runnableProgressBar = new Runnable() {
         @Override
         public void run() {
-            teamChatBuddyApplication.stopTTS();
+                            teamChatBuddyApplication.stopTTS(true); // Arrêt explicite demandé par l'utilisateur
             stopListeningFreeSpeech();
             try {
                 BuddySDK.UI.setFacialExpression(FacialExpression.NEUTRAL, 1);
@@ -956,14 +956,31 @@ public class MainFragment extends Fragment implements IDBObserver{
             if(teamChatBuddyApplication.isPlayingMusic()){
                 Log.i("MainFragment", "start music ");
                 if (commande.musicPlayer != null) {
-                    commande.musicPlayer.start();
+                    try {
+                        if (!commande.musicPlayer.isPlaying()) {
+                            commande.musicPlayer.start();
+                        }
+                    } catch (IllegalStateException e) {
+                        Log.w("MainFragment", "onResume() → musicPlayer pas encore prêt, onPrepared lancera start()");
+                    }
                 }
             }
 
             if(teamChatBuddyApplication.isPlayingRadio()){
-                Log.i("MainFragment", "start radio ");
+                Log.i("RADIO_DEBUG", "onResume() → isPlayingRadio=true, radioPlayer=" + (commande.radioPlayer != null ? "non-null" : "NULL"));
                 if (commande.radioPlayer != null) {
-                    commande.radioPlayer.start();
+                    try {
+                        if (!commande.radioPlayer.isPlaying()) {
+                            Log.i("RADIO_DEBUG", "onResume() → radioPlayer.start() appelé");
+                            commande.radioPlayer.start();
+                        } else {
+                            Log.i("RADIO_DEBUG", "onResume() → radio already playing, skip");
+                        }
+                    } catch (IllegalStateException e) {
+                        Log.w("RADIO_DEBUG", "onResume() → MediaPlayer pas encore prêt, onPrepared lancera start()");
+                    }
+                } else {
+                    Log.w("RADIO_DEBUG", "onResume() → radioPlayer est NULL, start ignoré");
                 }
             }
         }
@@ -1022,7 +1039,7 @@ public class MainFragment extends Fragment implements IDBObserver{
         listRep=new ArrayList();
         gptSend=false;
         teamChatBuddyApplication.removeObserver(this);
-        teamChatBuddyApplication.stopTTS();
+                            teamChatBuddyApplication.stopTTS(false); // Arrêt automatique ignoré
         teamChatBuddyApplication.setActivityClosed(true);
         teamChatBuddyApplication.setStartRecording(false);
         teamChatBuddyApplication.setSpeaking(false);
@@ -1070,11 +1087,13 @@ public class MainFragment extends Fragment implements IDBObserver{
                 commande.musicPlayer.pause();
             }
         }
-        Log.i( TAG, "radio Player "+teamChatBuddyApplication.isPlayingRadio());
+        Log.i("RADIO_DEBUG", "onPause() → isPlayingRadio=" + teamChatBuddyApplication.isPlayingRadio() + ", isOnApp=" + teamChatBuddyApplication.isOnApp);
         if(teamChatBuddyApplication.isPlayingRadio()){
             if (commande.radioPlayer != null) {
-                Log.i( TAG, "stop radioPlayer");
+                Log.i("RADIO_DEBUG", "onPause() → radioPlayer.pause() appelé, isPlaying=" + commande.radioPlayer.isPlaying());
                 commande.radioPlayer.pause();
+            } else {
+                Log.w("RADIO_DEBUG", "onPause() → radioPlayer est NULL, pause ignorée");
             }
         }
         try {
@@ -1398,7 +1417,8 @@ public class MainFragment extends Fragment implements IDBObserver{
     public void speakMouthMessages(String type, IMouthMessageCallback iMouthMessageCallback){
         Log.i(TAG, "speakMouthMessages : "+type);
         this.iMouthMessageCallback = iMouthMessageCallback;
-        if(type.equals("listen")){
+        // Correction : vérification explicite de l'état
+        if(type.equals("listen") && teamChatBuddyApplication.getAppIsListeningToTheQuestion() && !teamChatBuddyApplication.getSpeaking()){
             String mouth_listen_fr = teamChatBuddyApplication.getParamFromFile("Mouth_listen_fr", "TeamChatBuddy.properties");
             String mouth_listen_en =  teamChatBuddyApplication.getParamFromFile("Mouth_listen_en", "TeamChatBuddy.properties");
 
@@ -1453,7 +1473,7 @@ public class MainFragment extends Fragment implements IDBObserver{
                 }
             }
         }
-        else if( type.equals("stop")){
+        else if(type.equals("stop") && !teamChatBuddyApplication.getAppIsListeningToTheQuestion() && teamChatBuddyApplication.getSpeaking()){
             String Mouth_messages_fr = teamChatBuddyApplication.getParamFromFile("Mouth_speak_fr", "TeamChatBuddy.properties");
             String Mouth_messages_en =  teamChatBuddyApplication.getParamFromFile("Mouth_speak_en", "TeamChatBuddy.properties");
 
@@ -5047,7 +5067,10 @@ public class MainFragment extends Fragment implements IDBObserver{
                             teamChatBuddyApplication.setSpeaking(false);
                             teamChatBuddyApplication.setActivityClosed(true);
                             isListeningFreeSpeech = false;
-                            teamChatBuddyApplication.stopTTS();
+                            // Correction : ne stoppe le TTS que si l'utilisateur demande explicitement l'arrêt
+                            if (userRequestedStop) {
+                                teamChatBuddyApplication.stopTTS();
+                            }
                             teamChatBuddyApplication.setStoredResponse("");
                             if (buddy_texte_qst_lyt != null && buddy_texte_resp_lyt != null && buddy_texte_qst != null && buddy_texte_resp != null) {
                                 buddy_texte_qst_lyt.setVisibility(View.INVISIBLE);
