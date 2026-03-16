@@ -1903,7 +1903,7 @@ public class TeamChatBuddyApplication extends BuddyApplication {
 
                         @Override
                         public void onBeginningOfSpeech() {
-                            stopTTS();
+                            stopTTS(false);
                             BuddySDK.UI.setLabialExpression(LabialExpression.NO_EXPRESSION);
                             Log.e(TAG, "onBeginningOfSpeech");
                             Log.i("MYA_fragment", "startListeningHotword onBeginningOfSpeech");
@@ -3285,6 +3285,7 @@ public class TeamChatBuddyApplication extends BuddyApplication {
                     speechRecognizer.stopListening();
                     speechRecognizer.stopListening();
                     speechRecognizer.destroy();
+                    speechRecognizer = null;
                 }
             }
             catch (Exception e){}
@@ -3642,6 +3643,7 @@ public class TeamChatBuddyApplication extends BuddyApplication {
         Log.e("MEHDI", "texteToSpeak " + texteToSpeak);
         currentIndexText = 0;
         Stop_TTS_ReadSpeaker = false;
+        allTextPronoucedSuccess = true;
         Log.w(TAG, "speakTTS : " + texteToSpeak);
 
         currentIndexText = 0;
@@ -4021,12 +4023,36 @@ public class TeamChatBuddyApplication extends BuddyApplication {
 
     }
 
+    public volatile boolean isMouthMessagePlaying = false;
+
+    /**
+     * Cette fonction permet d'arrêter la prononciation.
+     * @param explicit true = arrêt explicite (toujours appliqué),
+     *                 false = arrêt automatique (ignoré si un message Mouth est en cours)
+     */
+    public void stopTTS(boolean explicit) {
+        if (!explicit && isMouthMessagePlaying) {
+            Log.w(TAG, "stopTTS(false) ignoré : message Mouth en cours");
+            return;
+        }
+        rawStopTTS();
+    }
+
     /**
      * Cette fonction permet d'arrêter la prononciation
      */
     public void stopTTS() {
+        if (isMouthMessagePlaying) {
+            Log.w(TAG, "stopTTS() ignoré : message Mouth en cours");
+            return;
+        }
+        rawStopTTS();
+    }
+
+    private void rawStopTTS() {
         Stop_TTS_ReadSpeaker = true;
         Log.w(TAG, "stopTTS");
+        Log.w(TAG, "stopTTS_STACK", new Throwable("stopTTS caller"));
         Stop_TTS_ReadSpeaker = true;
         try {
             if (BuddySDK.Speech.isSpeaking()) {

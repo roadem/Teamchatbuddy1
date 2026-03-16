@@ -1325,7 +1325,10 @@ public class MainFragment extends Fragment implements IDBObserver{
                                     speakMouthMessages("listen", new IMouthMessageCallback() {
                                         @Override
                                         public void onEnd(String s) {
-                                            teamChatBuddyApplication.setSpeaking(true);
+                                            teamChatBuddyApplication.isMouthMessagePlaying = false;
+                                            isListeningFreeSpeech = true;
+                                            teamChatBuddyApplication.setActivityClosed(false);
+                                            startListeningFreeSpeech(teamChatBuddyApplication.getListeningDuration());
                                         }
                                     });
                                 }
@@ -1347,12 +1350,14 @@ public class MainFragment extends Fragment implements IDBObserver{
 
                             Log.i("OpenAITTS", "------------------------ click mouth isListeningHotw = true ");
 
-                            if (teamChatBuddyApplication.getparam("STT_chosen").trim().equalsIgnoreCase("Android") || teamChatBuddyApplication.getparam("STT_chosen").trim().equalsIgnoreCase("Cerence") || !teamChatBuddyApplication.getAppIsListeningToTheQuestion() || teamChatBuddyApplication.getParamFromFile("Processing_the_audio_sequence","TeamChatBuddy.properties").trim().equalsIgnoreCase("No")) {
+                            final boolean notifyEndOfTimer = teamChatBuddyApplication.getparam("STT_chosen").trim().equalsIgnoreCase("Android") || teamChatBuddyApplication.getparam("STT_chosen").trim().equalsIgnoreCase("Cerence") || !teamChatBuddyApplication.getAppIsListeningToTheQuestion() || teamChatBuddyApplication.getParamFromFile("Processing_the_audio_sequence","TeamChatBuddy.properties").trim().equalsIgnoreCase("No");
+                            if (notifyEndOfTimer) {
                                 BuddySDK.UI.setFacialExpression(FacialExpression.NEUTRAL, 1);
                                 teamChatBuddyApplication.setStartRecording(false);
                                 teamChatBuddyApplication.setSpeaking(false);
                                 teamChatBuddyApplication.setActivityClosed(true);
                                 isListeningFreeSpeech = false;
+                                if (timerEcoute != null) timerEcoute.cancel();
                                 teamChatBuddyApplication.stopTTS();
                                 teamChatBuddyApplication.setStoredResponse("");
                                 if (buddy_texte_qst_lyt != null && buddy_texte_resp_lyt != null && buddy_texte_qst != null && buddy_texte_resp != null) {
@@ -1383,7 +1388,8 @@ public class MainFragment extends Fragment implements IDBObserver{
                                 } catch (Exception e) {
                                     Log.e(TAG, "BuddySDK Exception  " + e);
                                 }
-                                teamChatBuddyApplication.notifyObservers("end of timer");
+                                // notifyObservers("end of timer") est appelé après le message Mouth
+                                // pour éviter que le STT démarre avant la fin du TTS
                             }
                             else{
                                 BuddySDK.UI.setFacialExpression(FacialExpression.NEUTRAL, 1);
@@ -1402,8 +1408,14 @@ public class MainFragment extends Fragment implements IDBObserver{
                                 speakMouthMessages("stop", new IMouthMessageCallback() {
                                     @Override
                                     public void onEnd(String s) {
+                                        teamChatBuddyApplication.isMouthMessagePlaying = false;
+                                        if (notifyEndOfTimer) {
+                                            teamChatBuddyApplication.notifyObservers("end of timer");
+                                        }
                                     }
                                 });
+                            } else if (notifyEndOfTimer) {
+                                teamChatBuddyApplication.notifyObservers("end of timer");
                             }
                         }
                     }
@@ -1417,8 +1429,9 @@ public class MainFragment extends Fragment implements IDBObserver{
     public void speakMouthMessages(String type, IMouthMessageCallback iMouthMessageCallback){
         Log.i(TAG, "speakMouthMessages : "+type);
         this.iMouthMessageCallback = iMouthMessageCallback;
-        // Correction : vérification explicite de l'état
-        if(type.equals("listen") && teamChatBuddyApplication.getAppIsListeningToTheQuestion() && !teamChatBuddyApplication.getSpeaking()){
+        teamChatBuddyApplication.isMouthMessagePlaying = true;
+        teamChatBuddyApplication.stopListening(getActivity());
+        if(type.equals("listen")){
             String mouth_listen_fr = teamChatBuddyApplication.getParamFromFile("Mouth_listen_fr", "TeamChatBuddy.properties");
             String mouth_listen_en =  teamChatBuddyApplication.getParamFromFile("Mouth_listen_en", "TeamChatBuddy.properties");
 
@@ -1473,7 +1486,7 @@ public class MainFragment extends Fragment implements IDBObserver{
                 }
             }
         }
-        else if(type.equals("stop") && !teamChatBuddyApplication.getAppIsListeningToTheQuestion() && teamChatBuddyApplication.getSpeaking()){
+        else if(type.equals("stop")){
             String Mouth_messages_fr = teamChatBuddyApplication.getParamFromFile("Mouth_speak_fr", "TeamChatBuddy.properties");
             String Mouth_messages_en =  teamChatBuddyApplication.getParamFromFile("Mouth_speak_en", "TeamChatBuddy.properties");
 
@@ -1820,8 +1833,11 @@ public class MainFragment extends Fragment implements IDBObserver{
                             iInvitationCallback.onEnd("INVITATION_END");
                         if (iStartMessageCallback != null)
                             iStartMessageCallback.onEnd("STARTMESSAGE_END");
-                        if (iMouthMessageCallback != null)
+                        if (iMouthMessageCallback != null) {
+                            Log.w(TAG, "MOUTH_FLAG: isMouthMessagePlaying=false (TTS_success 1)");
+                            teamChatBuddyApplication.isMouthMessagePlaying = false;
                             iMouthMessageCallback.onEnd("MOUTHMESSAGE_END");
+                        }
                     });
                     Log.e(TAG, " TTS_success 1");
 
@@ -1892,6 +1908,8 @@ public class MainFragment extends Fragment implements IDBObserver{
                 getActivity().runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
+                        Log.w(TAG, "MOUTH_FLAG: isMouthMessagePlaying=false (TTS_error handler)");
+                        teamChatBuddyApplication.isMouthMessagePlaying = false;
                         String text = message.split(";")[1];
                         Log.w(TAG,"TTS_ERROR:"+text);
                         teamChatBuddyApplication.playUsingReadSpeakerCaseError(text, new ITTSCallbacks() {
@@ -1934,7 +1952,11 @@ public class MainFragment extends Fragment implements IDBObserver{
                                             isSpeaking =false;
                                             if(iInvitationCallback != null) iInvitationCallback.onEnd("INVITATION_END");
                                             if(iStartMessageCallback != null) iStartMessageCallback.onEnd("STARTMESSAGE_END");
-                                            if(iMouthMessageCallback != null) iMouthMessageCallback.onEnd("MOUTHMESSAGE_END");
+                                            if(iMouthMessageCallback != null) {
+                                                Log.w(TAG, "MOUTH_FLAG: isMouthMessagePlaying=false (TTS_error onSuccess recovery)");
+                                                teamChatBuddyApplication.isMouthMessagePlaying = false;
+                                                iMouthMessageCallback.onEnd("MOUTHMESSAGE_END");
+                                            }
                                             if(handler!=null && runnable!=null){
                                                 handler.removeCallbacks(runnable);
                                                 handler.removeCallbacksAndMessages(null);
@@ -2042,7 +2064,11 @@ public class MainFragment extends Fragment implements IDBObserver{
                                                     isSpeaking =false;
                                                     if(iInvitationCallback != null) iInvitationCallback.onEnd("INVITATION_END");
                                                     if(iStartMessageCallback != null) iStartMessageCallback.onEnd("STARTMESSAGE_END");
-                                                    if(iMouthMessageCallback != null) iMouthMessageCallback.onEnd("MOUTHMESSAGE_END");
+                                                    if(iMouthMessageCallback != null) {
+                                                        Log.w(TAG, "MOUTH_FLAG: isMouthMessagePlaying=false (TTS_error onError recovery)");
+                                                        teamChatBuddyApplication.isMouthMessagePlaying = false;
+                                                        iMouthMessageCallback.onEnd("MOUTHMESSAGE_END");
+                                                    }
                                                     if(handler!=null && runnable!=null){
                                                         handler.removeCallbacks(runnable);
                                                         handler.removeCallbacksAndMessages(null);
@@ -2241,6 +2267,7 @@ public class MainFragment extends Fragment implements IDBObserver{
             }
 
             else if (message.contains("restartListeningHotword")){
+                if (teamChatBuddyApplication.isMouthMessagePlaying) return;
                 Log.e("TEST_QR","restartListeningHotword notif ");
                 BuddySDK.UI.setFacialExpression(FacialExpression.NEUTRAL, 1);
                 teamChatBuddyApplication.setAppIsCurrentlyDealingWithTheQuestion(false);
@@ -5067,10 +5094,7 @@ public class MainFragment extends Fragment implements IDBObserver{
                             teamChatBuddyApplication.setSpeaking(false);
                             teamChatBuddyApplication.setActivityClosed(true);
                             isListeningFreeSpeech = false;
-                            // Correction : ne stoppe le TTS que si l'utilisateur demande explicitement l'arrêt
-                            if (userRequestedStop) {
-                                teamChatBuddyApplication.stopTTS();
-                            }
+                            teamChatBuddyApplication.stopTTS();
                             teamChatBuddyApplication.setStoredResponse("");
                             if (buddy_texte_qst_lyt != null && buddy_texte_resp_lyt != null && buddy_texte_qst != null && buddy_texte_resp != null) {
                                 buddy_texte_qst_lyt.setVisibility(View.INVISIBLE);
