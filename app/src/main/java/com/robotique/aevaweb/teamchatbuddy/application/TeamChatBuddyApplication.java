@@ -1844,6 +1844,7 @@ public class TeamChatBuddyApplication extends BuddyApplication {
         shouldPlayEmotion=false;
 
         stopListening(activity);
+        speechRecognizer = android.speech.SpeechRecognizer.createSpeechRecognizer(activity);
 
         setAlreadyChatting(false);
 
@@ -2169,6 +2170,7 @@ public class TeamChatBuddyApplication extends BuddyApplication {
             shouldPlayEmotion = false;
         }
         stopListening(activity);
+        speechRecognizer = android.speech.SpeechRecognizer.createSpeechRecognizer(activity);
 
         if (getCurrentLanguage().equals("en")) {
             toast_stt_android_indispo = getString(R.string.toast_stt_android_indispo_en);
