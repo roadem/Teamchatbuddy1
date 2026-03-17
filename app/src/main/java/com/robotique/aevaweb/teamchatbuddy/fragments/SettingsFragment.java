@@ -750,6 +750,8 @@ public class SettingsFragment extends Fragment implements IDBObserver, LanguageD
             }
             @Override
             public void onFinish() {
+                Log.d("FZE", "timerEcoute onFinish — isAdded=" + isAdded() + " activity=" + getActivity());
+                if (!isAdded() || getActivity() == null) return;
                 if(currentToast != null) currentToast.cancel();
                 launch_view.setVisibility(View.INVISIBLE);
                 teamChatBuddyApplication.setLangue(new Gson().fromJson(teamChatBuddyApplication.getparam("previousLanguage"), Langue.class));
@@ -1514,7 +1516,7 @@ public class SettingsFragment extends Fragment implements IDBObserver, LanguageD
         });
     }
     public void setLanguageText(){
-        if (!isAdded()) return;
+            if (!isAdded() || getActivity() == null) return;
         if(teamChatBuddyApplication.getLangue().getNom().equals("Anglais")){
             menu_title.setText(R.string.menu_title_en);
             menu_option_commande_textView.setText(R.string.menu_option_commande_en);
@@ -1675,7 +1677,8 @@ public class SettingsFragment extends Fragment implements IDBObserver, LanguageD
         @Override
         public void onDownloadEnd(boolean success, String english_or_french) {
             // Vérifie que le fragment est attaché avant toute manipulation UI
-            if (!isAdded()) return;
+            Log.d("FZE", "onDownloadEnd — isAdded=" + isAdded() + " success=" + success);
+            if (!isAdded() || getActivity() == null) return;
 
             if (success) {
                 switch (english_or_french) {

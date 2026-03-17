@@ -854,7 +854,8 @@ public class MainFragment extends Fragment implements IDBObserver{
         animationTimerPhoto.addFrame(getResources().getDrawable(R.drawable.loadingspin0036), 1000/37);
         animationTimerPhoto.addFrame(getResources().getDrawable(R.drawable.loadingspin0037), 1000/37);
 
-        AlertManager.getInstance(_parentActivity);
+        if (_parentActivity != null) AlertManager.getInstance(_parentActivity);
+        else Log.e("FZE", "onCreateView — _parentActivity null, AlertManager non initialisé");
         teamChatBuddyApplication.isOnApp = true;
 
         teamChatBuddyApplication.setparam("qr_time_remaining",0+"");
@@ -3044,6 +3045,8 @@ public class MainFragment extends Fragment implements IDBObserver{
 
             @Override
             public void onFinish() {
+                Log.d("FZE", "timerDownloading onFinish — isAdded=" + isAdded() + " activity=" + getActivity());
+                if (!isAdded() || getActivity() == null) return;
                 if(teamChatBuddyApplication.getparam("previousLanguage")!=null && !teamChatBuddyApplication.getparam("previousLanguage").trim().equals("")) {
                     if (currentToast != null) currentToast.cancel();
                     launch_view.setVisibility(View.GONE);

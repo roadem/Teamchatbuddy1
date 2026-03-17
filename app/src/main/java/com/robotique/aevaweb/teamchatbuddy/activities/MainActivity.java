@@ -183,6 +183,7 @@ public class MainActivity extends BuddyCompatActivity implements IDBObserver {
         }
         try {
             if(Boolean.parseBoolean(teamChatBuddyApplication.getparam("wasAlterActivated"))&&teamChatBuddyApplication.isAlertActivated.trim().equalsIgnoreCase("Yes")){
+                Log.w("MARIA", "actionType as touch : touch [source: fermeture BuddyCore]");
                 AlertManager.getInstance(MainActivity.this).resume();
             }
         } catch (Exception e) {
@@ -222,6 +223,8 @@ public class MainActivity extends BuddyCompatActivity implements IDBObserver {
         isFirstLaunch= false;
         if(teamChatBuddyApplication.isAlertActivated.trim().equalsIgnoreCase("Yes")){
             try {
+                Log.w("MARIA", "actionType as touch : touch [source: ouverture BuddyCore]");
+                AlertManager.getInstance(MainActivity.this).incremente("touch", MainActivity.this);
                 AlertManager.getInstance(MainActivity.this).pause();
             } catch (Exception e) {
                 Log.e(TAG, "Erreur lors du pause de AlertManager: " + e.getMessage());
@@ -379,6 +382,7 @@ public class MainActivity extends BuddyCompatActivity implements IDBObserver {
 
             // --- ton code existant ---
             if (teamChatBuddyApplication.isAlertActivated.trim().equalsIgnoreCase("Yes")) {
+                Log.w("MARIA", "actionType as touch : touch [source: écran]");
                 AlertManager.getInstance(this).incremente("touch", this);
             }
 

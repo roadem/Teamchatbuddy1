@@ -41,6 +41,10 @@ public class AlertManager {
     /** --- Singleton --- */
     public static synchronized AlertManager getInstance(Activity activity) {
         if (instance == null) {
+            if (activity == null) {
+                Log.e("AlertManager", "getInstance appelé avec activity=null — instance non créée");
+                return null;
+            }
             instance = new AlertManager(
                     (TeamChatBuddyApplication) activity.getApplicationContext(),
                     activity
@@ -215,6 +219,11 @@ public class AlertManager {
         if ((remainingTime <= 0)||(app.getCounterTouch() + app.getCounterTracking() +  app.getCounterHotword() >= requiredRepetitions+1)) {
             remainingTime = alertDelay;
             reinit();
+            Log.w("MARIA", "actionType as touch : touch [source: fermeture BuddyCore → reinit]");
+            Log.d("MARIA", "Touch count = " + app.getCounterTouch());
+            Log.d("MARIA", "Hotword count = " + app.getCounterHotword());
+            Log.d("MARIA", "Tracking count = " + app.getCounterTracking());
+            Log.d("MARIA", "requiredRepetitions = " + requiredRepetitions);
             return;
         }
 
