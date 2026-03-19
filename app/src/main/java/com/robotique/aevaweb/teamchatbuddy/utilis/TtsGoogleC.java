@@ -159,6 +159,7 @@ public class TtsGoogleC implements AutoCloseable {
 
                 if (httpResp.responseCode < 200 || httpResp.responseCode >= 300) {
                     Log.e("MYA_API_Google", "Erreur API : " + httpResp.responseCode);
+                    Log.e("MYA_API_Google", "Erreur API body : " + httpResp.body);
                     if (mTtsListener != null) mTtsListener.onError();
                     return;
                 }

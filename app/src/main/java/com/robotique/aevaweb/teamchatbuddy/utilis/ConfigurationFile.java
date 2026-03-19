@@ -14,7 +14,7 @@ import java.util.Arrays;
 public class ConfigurationFile {
 
     private static final String TAG = "TEAMCHATBUDDY_ConfigurationFile";
-    private static final int FILE_VERSION = 52; // upgrade this whenever you want to overwrite the file
+    private static final int FILE_VERSION = 51; // upgrade this whenever you want to overwrite the file
 
     public static CustomProperties props = new CustomProperties();
     public static InputStream is = null;
@@ -126,7 +126,7 @@ public class ConfigurationFile {
 
             props.addPropertyComment("Text_To_Speech_List", "");
             props.addPropertyComment("Text_To_Speech_List", "Text to Speech : ReadSpeaker/Android/ApiGoogle/OpenAI");
-            setProperty("Text_To_Speech_List","ReadSpeaker/Android/ApiGoogle/OpenAI");
+            setProperty("Text_To_Speech_List","ReadSpeaker/Android/OpenAI/ApiGoogle");
             props.addPropertyComment("ReadSpeaker_pitch_fr","Pitch and speed for TTS");
             props.addPropertyComment("ReadSpeaker_pitch_fr","ReadSpeaker Range : pitch [50-200] / speed [50-400]");
             props.addPropertyComment("ReadSpeaker_pitch_fr","Android/ApiGoogle Range : pitch & speed [50-150]");
@@ -142,21 +142,15 @@ public class ConfigurationFile {
             setProperty("TTS_ApiGoogle_pitch_en","130");
             setProperty("TTS_ApiGoogle_speed_fr","70");
             setProperty("TTS_ApiGoogle_speed_en","70");
-            props.addPropertyComment("TTS_ApiGoogle_URL", "Google Cloud TTS API base URL");
-            setProperty("TTS_ApiGoogle_URL","https://texttospeech.googleapis.com/v1/text:synthesize?");
             props.addPropertyComment("TTS_ApiGoogle_Voice_Type", "Voice type : Standard/Wavenet");
             props.addPropertyComment("TTS_ApiGoogle_Voice_Type", "If no voice is specified for a language in TTS_ApiGoogle_Language_Voice, the system uses the voice type defined in TTS_ApiGoogle_Voice_Type and appends '-A' as the default voice (e.g., Standard-A) ");
             setProperty("TTS_ApiGoogle_Voice_Type","Standard");
             setProperty("TTS_ApiGoogle_Language_Voice","[fr:Wavenet-C],[en:Standard-C]");
             props.addPropertyComment("TTS_OpenAI_ApiEndpoint", "TTS OpenAI parameters");
             setProperty("TTS_OpenAI_ApiEndpoint","/v1/audio/speech");
-            props.addPropertyComment("TTS_OpenAI_Model", "Available OpenAI TTS models: tts-1, tts-1-hd, gpt-4o-mini-tts");
             setProperty("TTS_OpenAI_Model","tts-1");
-            props.addPropertyComment("TTS_OpenAI_Voice", "Voices for tts-1 / tts-1-hd: alloy, ash, coral, echo, fable, onyx, nova, sage, shimmer");
-            props.addPropertyComment("TTS_OpenAI_Voice", "Voices for gpt-4o-mini-tts: alloy, ash, ballad, coral, echo, fable, nova, onyx, sage, shimmer, verse, marin, cedar");
             setProperty("TTS_OpenAI_Voice","sage");
             setProperty("TTS_OpenAI_Speed","1");
-            props.addPropertyComment("TTS_OpenAI_Instructions", "This instruction parameter is only used by the gpt-4o-mini-tts model.");
             setProperty("TTS_OpenAI_Instructions","Parle avec un ton heureux et enfantin.");
 
 
@@ -193,7 +187,7 @@ public class ConfigurationFile {
             props.addPropertyComment("Listening_time","");
             props.addPropertyComment("Listening_time","Maximum listening time (seconds) and number of successive listens");
             setProperty("Listening_time","10");
-            setProperty("Number_listens","1");
+            setProperty("Number_listens","2");
 
             props.addPropertyComment("Displaying_QRCode_period","");
             props.addPropertyComment("Displaying_QRCode_period","Period for displaying the QRCode in seconds");
@@ -211,7 +205,7 @@ public class ConfigurationFile {
             setProperty("QRCode_System","QRCode/DataMatrix/AprilTag");
 
             props.addPropertyComment("Language","");
-            props.addPropertyComment("Language","Languages available Français /Anglais /Espagnol /Allemand /Italien /Japonais /Arabe /Chinois /Danois /Néerlandais /Norvégien");
+          props.addPropertyComment("Language","Languages available Français /Anglais /Espagnol /Allemand /Italien /Japonais /Arabe /Chinois /Danois /Néerlandais /Norvégien");
             setProperty("Language","Français");
             setProperty("Languages_available","Français /Anglais /Espagnol /Allemand /Italien /Japonais /Arabe /Chinois /Danois /Néerlandais /Norvégien");
             setProperty("Language_Code_Used_In_STT_Android","fr-FR/en-US/es-ES/de-DE/it-IT/ja-JP/ar-DZ/cmn-Hans-CN/da-DK/nl-NL/nb-NO");
@@ -256,7 +250,7 @@ public class ConfigurationFile {
 
             props.addPropertyComment("Pattern_End_Phrase","");
             props.addPropertyComment("Pattern_End_Phrase","Set characters marking the end of a sentence using a regular expression for streaming TTS, fill with '</speak>' if you want to handle SSML blocks with Google Cloud TTS");
-                setProperty("Pattern_End_Phrase","$^"); // Désactive la coupure automatique, le TTS lira toute la phrase
+            setProperty("Pattern_End_Phrase","[.;!?][ ]{1,3}|:\\s*|\\n");
 
             props.addPropertyComment("Silence_time","");
             props.addPropertyComment("Silence_time","Manage end of speech detection");
@@ -305,11 +299,11 @@ public class ConfigurationFile {
 
             props.addPropertyComment("ovh_identifier", "");
             props.addPropertyComment("ovh_identifier", "Unique identifier for the OVH Mail-to-SMS service");
-            setProperty("ovh_identifier", "");
+            setProperty("ovh_identifier", "sms-fb3019-2");
             props.addPropertyComment("ovh_login", "OVH SMS account identifier (login)");
-            setProperty("ovh_login", "");
-            setProperty("ovh_customer_password", "");
-            setProperty("ovh_mail", "");
+            setProperty("ovh_login", "aeva");
+            setProperty("ovh_customer_password", "Aeva2025");
+            setProperty("ovh_mail", "email2sms@ovh.net");
             props.addPropertyComment("ovh_num_sender", "Sender's number (international format).");
             setProperty("ovh_num_sender", "");
 
@@ -359,7 +353,7 @@ public class ConfigurationFile {
             setProperty("Speak_color","blue");
 
             props.addPropertyComment("Mouth_messages","");
-            setProperty("Mouth_messages","Yes");
+            setProperty("Mouth_messages","No");
 
             String[] Mouth_listen_fr = {"Comment puis-je vous aider ?/Que puis-je faire pour vous ?/Comment puis-je vous assister ?/Y a-t-il quelque chose avec laquelle je peux vous aider ?/Y a-t-il quelque chose que je peux faire pour vous ?/Comment puis-je vous soutenir ? Y a-t-il quelque chose avec laquelle je peux vous être utile ?"};
             String[] Mouth_speak_fr = {"D'accord, j'arrête d'écouter/Très bien, je me tais/Pas de problème, je fais une pause/Compris, je n'écoute plus/Bien sûr, je suis en attente/Écoute désactivée"};
@@ -432,7 +426,7 @@ public class ConfigurationFile {
             props.addPropertyComment("ALERT_ACTIVITY","");
             props.addPropertyComment("ALERT_ACTIVITY","Alert parameters");
             props.addPropertyComment("ALERT_ACTIVITY", "Enable or disable inactivity alerts (Yes/No)");
-            setProperty("ALERT_ACTIVITY", "No");
+            setProperty("ALERT_ACTIVITY", "Yes");
 
             props.addPropertyComment("ALERT_DURATION", "Alert duration threshold in minutes before triggering inactivity alert");
             setProperty("ALERT_DURATION", "120");
@@ -446,9 +440,9 @@ public class ConfigurationFile {
             props.addPropertyComment("ALERT_REPETITIONS", "Number of detections required to consider a presence/activity detection as valid.");
             setProperty("ALERT_REPETITIONS", "1");
             props.addPropertyComment("ALERT_MAIL", "Email address of the user receiving the alert");
-            setProperty("ALERT_MAIL", "");
+            setProperty("ALERT_MAIL", "fatimazahra.aeva@gmail.com");
             props.addPropertyComment("ALERT_SMS", "Phone number of the user receiving the SMS alert (international format)");
-            setProperty("ALERT_SMS", "");
+            setProperty("ALERT_SMS", "0727127338");
 
             props.addPropertyComment("ALERT_TOOL", "Alert sending method: SMS, MAIL, or both (SMS/MAIL)");
             setProperty("ALERT_TOOL", "SMS/MAIL");
@@ -487,6 +481,8 @@ public class ConfigurationFile {
             setProperty("CMD_fr_14","Montre-moi une image de chien rouge <CMD_IMAGE chien rouge>");
             setProperty("CMD_fr_15","Ferme l'image <CMD_CLOSE_IMAGE>");
             setProperty("CMD_fr_16","Génère-moi une musique de « jazz avec une trompette » <CMD_MUSIC jazz avec une trompette>");
+            setProperty("CMD_fr_45","Envoie à « Pierre paul » le mail « voici mon message » <CMD_MAIL [Pierre-paul] [voici mon message]>");
+            setProperty("CMD_fr_47","Envoie à « Pierre paul » le sms « bonjour quoi de neuf  » <CMD_SMS [Pierre-paul] [bonjour quoi de neuf ]>");
 
             props.addPropertyComment("COMMAND_Prompt_en","CMD_fr_17=Mets la température à zéro <CMD_TEMP 0>");
             props.addPropertyComment("COMMAND_Prompt_en","CMD_fr_18=Avance sur 3 mètres <CMD_MOVE 3>");
@@ -516,9 +512,7 @@ public class ConfigurationFile {
             props.addPropertyComment("COMMAND_Prompt_en","CMD_fr_42=Sauve l’image comme « oiseau bleu » <CMD_SAVE_IMAGE oiseau_bleu>");
             props.addPropertyComment("COMMAND_Prompt_en","CMD_fr_43=Affiche l’image « oiseau bleu » <CMD_SHOW_IMAGE oiseau_bleu>");
             props.addPropertyComment("COMMAND_Prompt_en","CMD_fr_44=Supprime l’image « oiseau bleu » <CMD_DEL_IMAGE oiseau_bleu>");
-            props.addPropertyComment("COMMAND_Prompt_en","CMD_fr_45=Envoie à « Pierre paul » le mail « voici mon message » <CMD_MAIL [Pierre-paul] [voici mon message]>");
             props.addPropertyComment("COMMAND_Prompt_en","CMD_fr_46= Donne-moi les dernières informations (depuis 3 heures) <CMD_NEWS 3>");
-            props.addPropertyComment("COMMAND_Prompt_en","CMD_fr_47=Envoie à « Pierre paul » le sms « bonjour quoi de neuf  » <CMD_SMS [Pierre-paul] [bonjour quoi de neuf ]>");
 
             setProperty( "COMMAND_Prompt_en", "You are a voice command assistant. Based on the user's sentence, respond only with the corresponding commands enclosed in <> if they exist, separated by spaces. If no command matches, do not respond. Do not add any explanations or additional text. ");
 
@@ -538,6 +532,8 @@ public class ConfigurationFile {
             setProperty("CMD_en_14", "Show me an image of a red dog <CMD_IMAGE red dog>");
             setProperty("CMD_en_15", "Close the image <CMD_CLOSE_IMAGE>");
             setProperty("CMD_en_16", "Generate music « jazz with a trumpet » <CMD_MUSIC jazz with a trumpet>");
+            setProperty("CMD_en_45", "Send to « Pierre paul » the email « here is my message »  <CMD_MAIL [Pierre-Paul] [here is my message]>");
+            setProperty("CMD_en_47", "Send to « Pierre paul » the sms « hello how are you »  <CMD_SMS [Pierre-Paul] [hello how are you]>");
 
             props.addPropertyComment("CMD_MUSIC_fr", "CMD_en_17=Set the temperature to zero <CMD_TEMP 0>");
             props.addPropertyComment("CMD_MUSIC_fr", "CMD_en_18=Move forward 3 meters <CMD_MOVE 3>");
@@ -567,9 +563,7 @@ public class ConfigurationFile {
             props.addPropertyComment("CMD_MUSIC_fr", "CMD_en_42=Save the image as « blue bird » <CMD_SAVE_IMAGE blue_bird>");
             props.addPropertyComment("CMD_MUSIC_fr", "CMD_en_43=Displays the « blue bird » image <CMD_SHOW_IMAGE blue_bird>");
             props.addPropertyComment("CMD_MUSIC_fr", "CMD_en_44=Delete the « blue bird » image < CMD_DEL_IMAGE blue_bird>");
-            props.addPropertyComment("CMD_MUSIC_fr", "CMD_en_45=Send to « Pierre paul » the email « here is my message »  <CMD_MAIL [Pierre-Paul] [here is my message]>");
             props.addPropertyComment("CMD_MUSIC_fr", "CMD_en_46=Give me the latest news (from the past 3 hours) <CMD_NEWS 3>");
-            props.addPropertyComment("CMD_MUSIC_fr", "CMD_en_47=Send to « Pierre paul » the sms « hello how are you »  <CMD_SMS [Pierre-Paul] [hello how are you]>");
 
 
             setProperty( "CMD_MUSIC_fr", "Ok, je vais lire une musique correspondant à votre demande // Voila // Je n’arrive pas à générer la musique[1]" );
@@ -760,13 +754,13 @@ public class ConfigurationFile {
             setProperty("NEWS_ARTICLE_BBC_id","div.sc-666b6d83-0");
 
             props.addPropertyComment("mail_pierre-paul", "");
-            setProperty("mail_pierre-paul","b.fache@teamnet.fr");
+            setProperty("mail_pierre-paul","fatimazahra.aeva@gmail.com");
             setProperty("CMD_MAIL_subject_en","Email from TeamChatBuddy");
             setProperty("CMD_MAIL_subject_fr","Mail de TeamChatBuddy");
 
             props.addPropertyComment("sms_pierre-paul", "");
             props.addPropertyComment("sms_pierre-paul", "Phone number to receive sms (international format)");
-            setProperty("sms_pierre-paul","0605040908");
+            setProperty("sms_pierre-paul","0727127338");
 
 
             //-------------------------- Tracking ---------------------------

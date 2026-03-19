@@ -1973,7 +1973,7 @@ public class TeamChatBuddyApplication extends BuddyApplication {
                                     break;
                             }
                             setLed("listening");
-                            speechRecognizer.startListening(speechRecognizerIntent2);
+                            if (speechRecognizer != null) speechRecognizer.startListening(speechRecognizerIntent2);
                         }
 
                         @Override
@@ -1987,7 +1987,7 @@ public class TeamChatBuddyApplication extends BuddyApplication {
                             else {
                                 Log.e(TAG, "Hotword result  size = 0 : " );
                                 setLed("listening");
-                                speechRecognizer.startListening(speechRecognizerIntent2);
+                                if (speechRecognizer != null) speechRecognizer.startListening(speechRecognizerIntent2);
                             }
                         }
 
@@ -2270,7 +2270,7 @@ public class TeamChatBuddyApplication extends BuddyApplication {
                                 }
                                 else{
                                     setLed("listening");
-                                    speechRecognizer.startListening(speechRecognizerIntent);
+                                    if (speechRecognizer != null) speechRecognizer.startListening(speechRecognizerIntent);
                                 }
                                 break;
                             case SpeechRecognizer.ERROR_RECOGNIZER_BUSY:

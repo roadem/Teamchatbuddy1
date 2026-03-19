@@ -172,6 +172,7 @@ public class SettingsFragment extends Fragment implements IDBObserver, LanguageD
     private String entete ="entete";
     private String openAIKey = "openAI_API_Key";
     static Boolean modelDownloading = false;
+    private boolean langueSpinnerInitialized = false;
     private boolean english_is_downloaded = false;
     private boolean french_is_downloaded = false;
     private WifiBroadcastReceiver wifiBroadCastReceiver = new WifiBroadcastReceiver();
@@ -781,6 +782,7 @@ public class SettingsFragment extends Fragment implements IDBObserver, LanguageD
     private Runnable runnableProgressBar = new Runnable() {
         @Override
         public void run() {
+            Log.w("FZE", "runnableProgressBar fired — spinner affiché, modelDownloading=" + modelDownloading);
             launch_view.setVisibility(View.VISIBLE);
             timerEcoute.start();
         }
@@ -1077,7 +1079,12 @@ public class SettingsFragment extends Fragment implements IDBObserver, LanguageD
         menu_option_langue_spinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
             public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
-
+                if (!langueSpinnerInitialized) {
+                    langueSpinnerInitialized = true;
+                    Log.d("FZE", "onItemSelected langue — callback initial ignoré (position=" + position + ")");
+                    return;
+                }
+                Log.d("FZE", "onItemSelected langue — vraie sélection utilisateur (position=" + position + ")");
                 chosenLanguagePos = position;
                 for(Langue langue : langues ) {
                     langue.setChosen(false);
@@ -1088,6 +1095,7 @@ public class SettingsFragment extends Fragment implements IDBObserver, LanguageD
                         modelDownloading = true;
                         List<String> mlkitLangueCode = teamChatBuddyApplication.getLanguageCodeForDisponibleLangue("Language_Code_Used_In_Mlkit");
                         String codeLanguageMlkit = mlkitLangueCode.get(teamChatBuddyApplication.getLangue().getId()-1);
+                        Log.d("FZE", "downloadModel lancé pour langue=" + langue.getNom() + " code=" + codeLanguageMlkit);
                         teamChatBuddyApplication.downloadModel(imlKitDownloadCallback,codeLanguageMlkit.trim());
                         handlerProgressBar.postDelayed(runnableProgressBar,500);
 
@@ -1677,8 +1685,11 @@ public class SettingsFragment extends Fragment implements IDBObserver, LanguageD
         @Override
         public void onDownloadEnd(boolean success, String english_or_french) {
             // Vérifie que le fragment est attaché avant toute manipulation UI
-            Log.d("FZE", "onDownloadEnd — isAdded=" + isAdded() + " success=" + success);
-            if (!isAdded() || getActivity() == null) return;
+            Log.d("FZE", "onDownloadEnd — isAdded=" + isAdded() + " success=" + success + " modelDownloading=" + modelDownloading);
+            if (!isAdded() || getActivity() == null) {
+                Log.w("FZE", "onDownloadEnd — fragment détaché, callback ignoré (download orphelin)");
+                return;
+            }
 
             if (success) {
                 switch (english_or_french) {
@@ -1711,6 +1722,7 @@ public class SettingsFragment extends Fragment implements IDBObserver, LanguageD
                 english_is_downloaded = false;
                 List<String> mlkitLangueCode = teamChatBuddyApplication.getLanguageCodeForDisponibleLangue("Language_Code_Used_In_Mlkit");
                 String codeLanguageMlkit = mlkitLangueCode.get(teamChatBuddyApplication.getLangue().getId()-1);
+                Log.w("FZE", "onDownloadEnd échec — retry downloadModel langue=" + teamChatBuddyApplication.getLangue().getNom());
                 teamChatBuddyApplication.downloadModel(imlKitDownloadCallback,codeLanguageMlkit.trim());
                 handlerProgressBar.postDelayed(runnableProgressBar,500);
             }
@@ -1748,11 +1760,15 @@ public class SettingsFragment extends Fragment implements IDBObserver, LanguageD
             timerEcoute.cancel();
         }
         if(currentToast != null) currentToast.cancel();
+        Log.d("FZE", "onDestroy — modelDownloading=" + modelDownloading + " isClosingSettings=" + isClosingSettings);
         if(modelDownloading && !isClosingSettings){
             //set previous langue
+            handlerProgressBar.removeCallbacksAndMessages(null);
+            modelDownloading = false;
             setPreviousLanguage();
+            launch_view.setVisibility(View.INVISIBLE);
             downloadingBar.setVisibility(View.GONE);
-
+            Log.d("FZE", "onDestroy — langue restaurée: " + teamChatBuddyApplication.getparam("previousLanguage"));
         }
     }
     @Override
