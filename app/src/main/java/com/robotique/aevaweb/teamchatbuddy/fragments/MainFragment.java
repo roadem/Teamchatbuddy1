@@ -967,20 +967,18 @@ public class MainFragment extends Fragment implements IDBObserver{
                 }
             }
 
-            if(teamChatBuddyApplication.isPlayingRadio()){
+         if(teamChatBuddyApplication.isPlayingRadio()){
                 Log.i("RADIO_DEBUG", "onResume() → isPlayingRadio=true, radioPlayer=" + (commande.radioPlayer != null ? "non-null" : "NULL"));
                 if (commande.radioPlayer != null) {
-                    if (Commande.radioPlayerPrepared && !commande.radioPlayer.isPlaying()) {
-                        Log.i("RADIO_DEBUG", "onResume() → radioPlayer.start() appelé");
-                        try {
+                    try {
+                        if (!commande.radioPlayer.isPlaying()) {
+                            Log.i("RADIO_DEBUG", "onResume() → radioPlayer.start() appelé");
                             commande.radioPlayer.start();
-                        } catch (IllegalStateException e) {
-                            Log.w("RADIO_DEBUG", "onResume() → start() failed: " + e.getMessage());
+                        } else {
+                            Log.i("RADIO_DEBUG", "onResume() → radio already playing, skip");
                         }
-                    } else if (!Commande.radioPlayerPrepared) {
+                    } catch (IllegalStateException e) {
                         Log.w("RADIO_DEBUG", "onResume() → MediaPlayer pas encore prêt, onPrepared lancera start()");
-                    } else {
-                        Log.i("RADIO_DEBUG", "onResume() → radio already playing, skip");
                     }
                 } else {
                     Log.w("RADIO_DEBUG", "onResume() → radioPlayer est NULL, start ignoré");
@@ -2981,12 +2979,12 @@ public class MainFragment extends Fragment implements IDBObserver{
         Log.i(TAG, settingClass.toString());
         if (teamChatBuddyApplication.getparam("Stimulis").contains("yes")){
             Log.e("MRARA","disnable Raise event Stimilus");
-            if (BuddySDK.Companion != null) {
+            
                 BuddySDK.Companion.raiseEvent("disableRightEye");
                 BuddySDK.Companion.raiseEvent("disableLeftEye");
                 BuddySDK.Companion.raiseEvent("disableHeadSensors");
                 BuddySDK.Companion.raiseEvent("disableBodySensors");
-            }
+            
             timerToApplyBI=new CountDownTimer(10*1000,1000) {
                 @Override
                 public void onTick(long l) {
@@ -3002,21 +3000,20 @@ public class MainFragment extends Fragment implements IDBObserver{
         }else {
             if (teamChatBuddyApplication.getParamFromFile("use_companion_when_stimulis_disabled","TeamChatBuddy.properties").trim().equalsIgnoreCase("Yes")){
                 Log.e("MRARA","enable Raise event Yes");
-                if (BuddySDK.Companion != null) {
+        
                     BuddySDK.Companion.raiseEvent("enableRightEye");
                     BuddySDK.Companion.raiseEvent("enableLeftEye");
                     BuddySDK.Companion.raiseEvent("enableHeadSensors");
                     BuddySDK.Companion.raiseEvent("enableBodySensors");
                     BuddySDK.Companion.raiseEvent("disableOnMouth");
-                }
+            
             }else {
                 Log.e("MRARA","disable Raise event NO "+BuddySDK.Companion+"  --- ");
-                if (BuddySDK.Companion != null) {
                     BuddySDK.Companion.raiseEvent("disableRightEye");
                     BuddySDK.Companion.raiseEvent("disableLeftEye");
                     BuddySDK.Companion.raiseEvent("disableHeadSensors");
                     BuddySDK.Companion.raiseEvent("disableBodySensors");
-                }
+                
             }
         }
 
