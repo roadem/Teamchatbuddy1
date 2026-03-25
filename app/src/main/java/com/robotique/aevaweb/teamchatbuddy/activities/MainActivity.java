@@ -128,6 +128,7 @@ public class MainActivity extends BuddyCompatActivity implements IDBObserver {
     protected void onResume() {
         super.onResume();
         Log.d(TAG," --- onResume() ---");
+        teamChatBuddyApplication.isOnApp = true;
         teamChatBuddyApplication.hideSystemUI(this);
         teamChatBuddyApplication.setAppIsCurrentlyDealingWithTheQuestion(false);
         if (! Python.isStarted()) {

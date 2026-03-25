@@ -968,17 +968,21 @@ public class MainFragment extends Fragment implements IDBObserver{
             }
 
          if(teamChatBuddyApplication.isPlayingRadio()){
-                Log.i("RADIO_DEBUG", "onResume() → isPlayingRadio=true, radioPlayer=" + (commande.radioPlayer != null ? "non-null" : "NULL"));
+                Log.i("RADIO_DEBUG", "onResume() → isPlayingRadio=true, radioPlayer=" + (commande.radioPlayer != null ? "non-null" : "NULL") + ", prepared=" + Commande.radioPlayerPrepared);
                 if (commande.radioPlayer != null) {
-                    try {
-                        if (!commande.radioPlayer.isPlaying()) {
-                            Log.i("RADIO_DEBUG", "onResume() → radioPlayer.start() appelé");
-                            commande.radioPlayer.start();
-                        } else {
-                            Log.i("RADIO_DEBUG", "onResume() → radio already playing, skip");
+                    if (Commande.radioPlayerPrepared) {
+                        try {
+                            if (!commande.radioPlayer.isPlaying()) {
+                                Log.i("RADIO_DEBUG", "onResume() → radioPlayer.start() appelé");
+                                commande.radioPlayer.start();
+                            } else {
+                                Log.i("RADIO_DEBUG", "onResume() → radio already playing, skip");
+                            }
+                        } catch (IllegalStateException e) {
+                            Log.w("RADIO_DEBUG", "onResume() → IllegalStateException, onPrepared lancera start()");
                         }
-                    } catch (IllegalStateException e) {
-                        Log.w("RADIO_DEBUG", "onResume() → MediaPlayer pas encore prêt, onPrepared lancera start()");
+                    } else {
+                        Log.w("RADIO_DEBUG", "onResume() → radioPlayer pas encore prêt, onPrepared lancera start()");
                     }
                 } else {
                     Log.w("RADIO_DEBUG", "onResume() → radioPlayer est NULL, start ignoré");
