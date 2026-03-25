@@ -126,7 +126,7 @@ public class ConfigurationFile {
 
             props.addPropertyComment("Text_To_Speech_List", "");
             props.addPropertyComment("Text_To_Speech_List", "Text to Speech : ReadSpeaker/Android/ApiGoogle/OpenAI");
-            setProperty("Text_To_Speech_List","ReadSpeaker/Android/OpenAI/ApiGoogle");
+            setProperty("Text_To_Speech_List","ReadSpeaker/Android/ApiGoogle/OpenAI");
             props.addPropertyComment("ReadSpeaker_pitch_fr","Pitch and speed for TTS");
             props.addPropertyComment("ReadSpeaker_pitch_fr","ReadSpeaker Range : pitch [50-200] / speed [50-400]");
             props.addPropertyComment("ReadSpeaker_pitch_fr","Android/ApiGoogle Range : pitch & speed [50-150]");
@@ -205,7 +205,7 @@ public class ConfigurationFile {
             setProperty("QRCode_System","QRCode/DataMatrix/AprilTag");
 
             props.addPropertyComment("Language","");
-          props.addPropertyComment("Language","Languages available Français /Anglais /Espagnol /Allemand /Italien /Japonais /Arabe /Chinois /Danois /Néerlandais /Norvégien");
+            props.addPropertyComment("Language","Languages available Français /Anglais /Espagnol /Allemand /Italien /Japonais /Arabe /Chinois /Danois /Néerlandais /Norvégien");
             setProperty("Language","Français");
             setProperty("Languages_available","Français /Anglais /Espagnol /Allemand /Italien /Japonais /Arabe /Chinois /Danois /Néerlandais /Norvégien");
             setProperty("Language_Code_Used_In_STT_Android","fr-FR/en-US/es-ES/de-DE/it-IT/ja-JP/ar-DZ/cmn-Hans-CN/da-DK/nl-NL/nb-NO");
@@ -353,7 +353,7 @@ public class ConfigurationFile {
             setProperty("Speak_color","blue");
 
             props.addPropertyComment("Mouth_messages","");
-            setProperty("Mouth_messages","No");
+            setProperty("Mouth_messages","Yes");
 
             String[] Mouth_listen_fr = {"Comment puis-je vous aider ?/Que puis-je faire pour vous ?/Comment puis-je vous assister ?/Y a-t-il quelque chose avec laquelle je peux vous aider ?/Y a-t-il quelque chose que je peux faire pour vous ?/Comment puis-je vous soutenir ? Y a-t-il quelque chose avec laquelle je peux vous être utile ?"};
             String[] Mouth_speak_fr = {"D'accord, j'arrête d'écouter/Très bien, je me tais/Pas de problème, je fais une pause/Compris, je n'écoute plus/Bien sûr, je suis en attente/Écoute désactivée"};
