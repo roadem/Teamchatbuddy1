@@ -970,15 +970,17 @@ public class MainFragment extends Fragment implements IDBObserver{
             if(teamChatBuddyApplication.isPlayingRadio()){
                 Log.i("RADIO_DEBUG", "onResume() → isPlayingRadio=true, radioPlayer=" + (commande.radioPlayer != null ? "non-null" : "NULL"));
                 if (commande.radioPlayer != null) {
-                    try {
-                        if (!commande.radioPlayer.isPlaying()) {
-                            Log.i("RADIO_DEBUG", "onResume() → radioPlayer.start() appelé");
+                    if (Commande.radioPlayerPrepared && !commande.radioPlayer.isPlaying()) {
+                        Log.i("RADIO_DEBUG", "onResume() → radioPlayer.start() appelé");
+                        try {
                             commande.radioPlayer.start();
-                        } else {
-                            Log.i("RADIO_DEBUG", "onResume() → radio already playing, skip");
+                        } catch (IllegalStateException e) {
+                            Log.w("RADIO_DEBUG", "onResume() → start() failed: " + e.getMessage());
                         }
-                    } catch (IllegalStateException e) {
+                    } else if (!Commande.radioPlayerPrepared) {
                         Log.w("RADIO_DEBUG", "onResume() → MediaPlayer pas encore prêt, onPrepared lancera start()");
+                    } else {
+                        Log.i("RADIO_DEBUG", "onResume() → radio already playing, skip");
                     }
                 } else {
                     Log.w("RADIO_DEBUG", "onResume() → radioPlayer est NULL, start ignoré");
@@ -1092,7 +1094,11 @@ public class MainFragment extends Fragment implements IDBObserver{
         if(teamChatBuddyApplication.isPlayingRadio()){
             if (commande.radioPlayer != null) {
                 Log.i("RADIO_DEBUG", "onPause() → radioPlayer.pause() appelé, isPlaying=" + commande.radioPlayer.isPlaying());
-                commande.radioPlayer.pause();
+                if (commande.radioPlayer.isPlaying()) {
+                    commande.radioPlayer.pause();
+                } else {
+                    Log.w("RADIO_DEBUG", "onPause() → radioPlayer not playing, pause ignorée");
+                }
             } else {
                 Log.w("RADIO_DEBUG", "onPause() → radioPlayer est NULL, pause ignorée");
             }
@@ -2975,10 +2981,12 @@ public class MainFragment extends Fragment implements IDBObserver{
         Log.i(TAG, settingClass.toString());
         if (teamChatBuddyApplication.getparam("Stimulis").contains("yes")){
             Log.e("MRARA","disnable Raise event Stimilus");
-            BuddySDK.Companion.raiseEvent("disableRightEye");
-            BuddySDK.Companion.raiseEvent("disableLeftEye");
-            BuddySDK.Companion.raiseEvent("disableHeadSensors");
-            BuddySDK.Companion.raiseEvent("disableBodySensors");
+            if (BuddySDK.Companion != null) {
+                BuddySDK.Companion.raiseEvent("disableRightEye");
+                BuddySDK.Companion.raiseEvent("disableLeftEye");
+                BuddySDK.Companion.raiseEvent("disableHeadSensors");
+                BuddySDK.Companion.raiseEvent("disableBodySensors");
+            }
             timerToApplyBI=new CountDownTimer(10*1000,1000) {
                 @Override
                 public void onTick(long l) {
@@ -2994,17 +3002,21 @@ public class MainFragment extends Fragment implements IDBObserver{
         }else {
             if (teamChatBuddyApplication.getParamFromFile("use_companion_when_stimulis_disabled","TeamChatBuddy.properties").trim().equalsIgnoreCase("Yes")){
                 Log.e("MRARA","enable Raise event Yes");
-                BuddySDK.Companion.raiseEvent("enableRightEye");
-                BuddySDK.Companion.raiseEvent("enableLeftEye");
-                BuddySDK.Companion.raiseEvent("enableHeadSensors");
-                BuddySDK.Companion.raiseEvent("enableBodySensors");
-                BuddySDK.Companion.raiseEvent("disableOnMouth");
+                if (BuddySDK.Companion != null) {
+                    BuddySDK.Companion.raiseEvent("enableRightEye");
+                    BuddySDK.Companion.raiseEvent("enableLeftEye");
+                    BuddySDK.Companion.raiseEvent("enableHeadSensors");
+                    BuddySDK.Companion.raiseEvent("enableBodySensors");
+                    BuddySDK.Companion.raiseEvent("disableOnMouth");
+                }
             }else {
                 Log.e("MRARA","disable Raise event NO "+BuddySDK.Companion+"  --- ");
-                BuddySDK.Companion.raiseEvent("disableRightEye");
-                BuddySDK.Companion.raiseEvent("disableLeftEye");
-                BuddySDK.Companion.raiseEvent("disableHeadSensors");
-                BuddySDK.Companion.raiseEvent("disableBodySensors");
+                if (BuddySDK.Companion != null) {
+                    BuddySDK.Companion.raiseEvent("disableRightEye");
+                    BuddySDK.Companion.raiseEvent("disableLeftEye");
+                    BuddySDK.Companion.raiseEvent("disableHeadSensors");
+                    BuddySDK.Companion.raiseEvent("disableBodySensors");
+                }
             }
         }
 

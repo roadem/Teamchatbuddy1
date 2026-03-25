@@ -104,6 +104,7 @@ public class Commande {
     private String imeiLocation;
     private String imeiFeeder;
     public static MediaPlayer radioPlayer;
+    public static boolean radioPlayerPrepared = false;
     public static MediaPlayer musicPlayer;
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
     private String historicMessages = "messages";
@@ -3350,9 +3351,10 @@ public class Commande {
     public void CMD_STOP_RADIO(){
         if (radioPlayer != null) {
             Log.i( TAG, "stop radioPlayer");
-            radioPlayer.stop();
+            try { radioPlayer.stop(); } catch (IllegalStateException e) { Log.w(TAG, "radioPlayer.stop() called in wrong state: " + e.getMessage()); }
             radioPlayer.release();
             radioPlayer = null;
+            radioPlayerPrepared = false;
             teamChatBuddyApplication.setPlayingRadio(false);
         }
     }
@@ -7117,6 +7119,7 @@ public class Commande {
     private void playRadio(String radioUrl){
         CMD_STOP_RADIO();
         radioPlayer = new MediaPlayer();
+        radioPlayerPrepared = false;
         teamChatBuddyApplication.setPlayingRadio(true);
         Log.i("RADIO_DEBUG", "playRadio() → isPlayingRadio=true, isOnApp=" + teamChatBuddyApplication.isOnApp + ", url=" + radioUrl);
         radioPlayer.setAudioAttributes(new AudioAttributes.Builder()
@@ -7135,6 +7138,7 @@ public class Commande {
         radioPlayer.setOnPreparedListener(new MediaPlayer.OnPreparedListener() {
             @Override
             public void onPrepared(MediaPlayer mp) {
+                radioPlayerPrepared = true;
                 Log.i("RADIO_DEBUG", "onPrepared() → isOnApp=" + teamChatBuddyApplication.isOnApp + ", isPlayingRadio=" + teamChatBuddyApplication.isPlayingRadio());
                 if (teamChatBuddyApplication.isOnApp) {
                     Log.i("RADIO_DEBUG", "onPrepared() → start() appelé");

@@ -4546,6 +4546,26 @@ public class TeamChatBuddyApplication extends BuddyApplication {
                             @Override
                             public void onError() {
                                 Log.e("googleNews", "speakGoogleCloudTTS  onError-----------  ");
+                                getGoogleCloudTTS().close();
+                                if (type.equals("timeOutExpired")) {
+                                    timeoutExpired = false;
+                                    if (getparam("Mode_Stream").contains("yes") && getparam("chatbot_chosen").equalsIgnoreCase("ChatGPT") && getChatGptStreamMode() != null) {
+                                        getChatGptStreamMode().resumeStreaming();
+                                    } else if (getparam("chatbot_chosen").equalsIgnoreCase("CustomGPT") && getCustomGPTStreamMode() != null) {
+                                        getCustomGPTStreamMode().resumeStreaming();
+                                    } else {
+                                        notifyObservers("playStoredResponse");
+                                    }
+                                } else if (type.equals("storedResponse")) {
+                                    questionNumber++;
+                                    notifyObservers("TTS_error;" + texteToSpeak);
+                                    storedResponse = "";
+                                    setLanguageDetected("");
+                                } else {
+                                    questionNumber++;
+                                    notifyObservers("TTS_error;" + texteToSpeak);
+                                    setLanguageDetected("");
+                                }
                             }
                         });
 
@@ -4601,6 +4621,31 @@ public class TeamChatBuddyApplication extends BuddyApplication {
                             @Override
                             public void onError() {
                                 Log.e("MRA", "speakGoogleCloudTTS  onError-----------  ");
+                                new Handler(Looper.getMainLooper()).post(() -> {
+                                    try {
+                                        if (type.equals("timeOutExpired")) {
+                                            timeoutExpired = false;
+                                            if (getparam("Mode_Stream").contains("yes") && getparam("chatbot_chosen").equalsIgnoreCase("ChatGPT") && getChatGptStreamMode() != null) {
+                                                getChatGptStreamMode().resumeStreaming();
+                                            } else if (getparam("chatbot_chosen").equalsIgnoreCase("CustomGPT") && getCustomGPTStreamMode() != null) {
+                                                getCustomGPTStreamMode().resumeStreaming();
+                                            } else {
+                                                notifyObservers("playStoredResponse");
+                                            }
+                                        } else if (type.equals("storedResponse")) {
+                                            questionNumber++;
+                                            notifyObservers("TTS_error;" + texteToSpeak);
+                                            storedResponse = "";
+                                            setLanguageDetected("");
+                                        } else {
+                                            questionNumber++;
+                                            notifyObservers("TTS_error;" + texteToSpeak);
+                                            setLanguageDetected("");
+                                        }
+                                    } catch (Exception e) {
+                                        Log.e("MRA", "onError handler exception: " + e.getMessage());
+                                    }
+                                });
                             }
                         });
                         getGoogleCloudTTS().start(getParamFromFile("TTS_ApiGoogle_URL", configurationFilePseudo)+ "key=" +getParamFromFile("ApiGoogle_Key", configurationFilePseudo), texteToSpeak);
@@ -4949,7 +4994,7 @@ public class TeamChatBuddyApplication extends BuddyApplication {
     public String getSecondTTSfromTTSList(){
         String[] listTTS= getParamFromFile("Text_To_Speech_List",configurationFilePseudo).split("/");
         if (listTTS.length>1){
-            if (listTTS[1].trim().equalsIgnoreCase("Android") || listTTS[1].trim().equalsIgnoreCase("ApiGoogle")){
+            if (listTTS[1].trim().equalsIgnoreCase("Android") || listTTS[1].trim().equalsIgnoreCase("ApiGoogle") || listTTS[1].trim().equalsIgnoreCase("OpenAI") || listTTS[1].trim().equalsIgnoreCase("ReadSpeaker")){
                 return listTTS[1].trim();
             }
             else return "Android";
@@ -5178,7 +5223,8 @@ public class TeamChatBuddyApplication extends BuddyApplication {
 
         //Vérifier la voix finale
         if (validatedVoice == null || validatedVoice.isEmpty()) {
-            ittsCallbacks.onError("No valid ReadSpeaker voice found");
+            Log.i("TEST_voix", "playUsingReadSpeakerCaseError: no ReadSpeaker voice for this language, trying next TTS in list");
+            tryNextFallbackTTS(text, ittsCallbacks);
             return;
         }
 
@@ -5201,16 +5247,65 @@ public class TeamChatBuddyApplication extends BuddyApplication {
                         public void onResume() throws RemoteException {}
                         @Override
                         public void onError(String s) throws RemoteException {
-                            ittsCallbacks.onError(s);
-                            Log.e("FCH_TEST","start play from TTS error  onERRor");
+                            Log.e("FCH_TEST","start play from TTS error  onERRor - trying next TTS");
+                            tryNextFallbackTTS(text, ittsCallbacks);
                         }
                     });
         }
         else{
-            Log.e("FCH_TEST","else---------- start play from TTS error");
-            ittsCallbacks.onError("ReadSpeaker indisponible");
+            Log.e("FCH_TEST","else---------- start play from TTS error - trying next TTS");
+            tryNextFallbackTTS(text, ittsCallbacks);
         }
 
+    }
+
+    private void tryNextFallbackTTS(String text, ITTSCallbacks ittsCallbacks) {
+        String[] listTTS = getParamFromFile("Text_To_Speech_List", configurationFilePseudo).split("/");
+        String primaryTTS = getChosenTTS().trim();
+        int alreadyTriedUpTo = -1;
+        for (int i = 0; i < listTTS.length; i++) {
+            String tts = listTTS[i].trim();
+            if (tts.equalsIgnoreCase(primaryTTS) || tts.equalsIgnoreCase("ReadSpeaker")) {
+                if (i > alreadyTriedUpTo) alreadyTriedUpTo = i;
+            }
+        }
+        tryFallbackFromIndex(listTTS, alreadyTriedUpTo + 1, text, ittsCallbacks);
+    }
+
+    private void tryFallbackFromIndex(String[] listTTS, int index, String text, ITTSCallbacks ittsCallbacks) {
+        if (index >= listTTS.length) {
+            Log.i("TEST_voix", "tryFallbackFromIndex: all TTS options exhausted");
+            ittsCallbacks.onError("No TTS available for this language");
+            return;
+        }
+        String nextTTS = listTTS[index].trim();
+        Log.i("TEST_voix", "tryFallbackFromIndex: trying " + nextTTS);
+        if (nextTTS.equalsIgnoreCase("Android")) {
+            try {
+                initFallbackTTS(getCurrentLanguage());
+                int result = tts_android.speak(text, TextToSpeech.QUEUE_FLUSH, null, "TTS_FALLBACK_UTTERANCE_ID");
+                if (result == TextToSpeech.ERROR) {
+                    Log.i("TEST_voix", "tryFallbackFromIndex: Android TTS speak error, trying next");
+                    tryFallbackFromIndex(listTTS, index + 1, text, ittsCallbacks);
+                    return;
+                }
+                Log.i("TEST_voix", "tryFallbackFromIndex: Android TTS speak launched successfully");
+                tts_android.setOnUtteranceProgressListener(new UtteranceProgressListener() {
+                    @Override public void onStart(String utteranceId) { Log.i("TEST_voix", "tryFallbackFromIndex: Android TTS onStart"); }
+                    @Override public void onDone(String utteranceId) { Log.i("TEST_voix", "tryFallbackFromIndex: Android TTS onDone"); ittsCallbacks.onSuccess(text); }
+                    @Override public void onError(String utteranceId) {
+                        Log.i("TEST_voix", "tryFallbackFromIndex: Android TTS utterance error, trying next");
+                        tryFallbackFromIndex(listTTS, index + 1, text, ittsCallbacks);
+                    }
+                });
+            } catch (Exception e) {
+                Log.e(TAG, "tryFallbackFromIndex Android exception: " + e.getMessage());
+                tryFallbackFromIndex(listTTS, index + 1, text, ittsCallbacks);
+            }
+        } else {
+            Log.i("TEST_voix", "tryFallbackFromIndex: " + nextTTS + " not supported as fallback here, trying next");
+            tryFallbackFromIndex(listTTS, index + 1, text, ittsCallbacks);
+        }
     }
 
     //#endregion ******************************************************* TTS **********************************************************************
