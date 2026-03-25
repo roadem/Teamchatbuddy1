@@ -955,15 +955,24 @@ public class MainFragment extends Fragment implements IDBObserver{
             }
 
             if(teamChatBuddyApplication.isPlayingMusic()){
-                Log.i("MainFragment", "start music ");
+                Log.i("MUSIC_DEBUG", "onResume() → isPlayingMusic=true, musicPlayer=" + (commande.musicPlayer != null ? "non-null" : "NULL") + ", prepared=" + Commande.musicPlayerPrepared);
                 if (commande.musicPlayer != null) {
-                    try {
-                        if (!commande.musicPlayer.isPlaying()) {
-                            commande.musicPlayer.start();
+                    if (Commande.musicPlayerPrepared) {
+                        try {
+                            if (!commande.musicPlayer.isPlaying()) {
+                                Log.i("MUSIC_DEBUG", "onResume() → musicPlayer.start() appelé");
+                                commande.musicPlayer.start();
+                            } else {
+                                Log.i("MUSIC_DEBUG", "onResume() → music already playing, skip");
+                            }
+                        } catch (IllegalStateException e) {
+                            Log.w("MUSIC_DEBUG", "onResume() → IllegalStateException, onPrepared lancera start()");
                         }
-                    } catch (IllegalStateException e) {
-                        Log.w("MainFragment", "onResume() → musicPlayer pas encore prêt, onPrepared lancera start()");
+                    } else {
+                        Log.w("MUSIC_DEBUG", "onResume() → musicPlayer pas encore prêt, onPrepared lancera start()");
                     }
+                } else {
+                    Log.w("MUSIC_DEBUG", "onResume() → musicPlayer est NULL, start ignoré");
                 }
             }
 
@@ -1085,11 +1094,21 @@ public class MainFragment extends Fragment implements IDBObserver{
         }
 
         teamChatBuddyApplication.setparam("remaining_attempts",String.valueOf(teamChatBuddyApplication.getRemainingAttempts()));
-        Log.i( TAG, "music Player "+teamChatBuddyApplication.isPlayingMusic());
+        Log.i("MUSIC_DEBUG", "onPause() → isPlayingMusic=" + teamChatBuddyApplication.isPlayingMusic() + ", isOnApp=" + teamChatBuddyApplication.isOnApp);
         if(teamChatBuddyApplication.isPlayingMusic()){
             if (commande.musicPlayer != null) {
-                Log.i( TAG, "stop musicPlayer");
-                commande.musicPlayer.pause();
+                try {
+                    if (commande.musicPlayer.isPlaying()) {
+                        Log.i("MUSIC_DEBUG", "onPause() → musicPlayer.pause() appelé");
+                        commande.musicPlayer.pause();
+                    } else {
+                        Log.w("MUSIC_DEBUG", "onPause() → musicPlayer not playing, pause ignorée");
+                    }
+                } catch (IllegalStateException e) {
+                    Log.w("MUSIC_DEBUG", "onPause() → IllegalStateException, pause ignorée");
+                }
+            } else {
+                Log.w("MUSIC_DEBUG", "onPause() → musicPlayer est NULL, pause ignorée");
             }
         }
         Log.i("RADIO_DEBUG", "onPause() → isPlayingRadio=" + teamChatBuddyApplication.isPlayingRadio() + ", isOnApp=" + teamChatBuddyApplication.isOnApp);

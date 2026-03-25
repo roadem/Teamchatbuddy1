@@ -106,6 +106,7 @@ public class Commande {
     public static MediaPlayer radioPlayer;
     public static boolean radioPlayerPrepared = false;
     public static MediaPlayer musicPlayer;
+    public static boolean musicPlayerPrepared = false;
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
     private String historicMessages = "messages";
     private String content= "content";
@@ -3365,6 +3366,7 @@ public class Commande {
             musicPlayer.stop();
             musicPlayer.release();
             musicPlayer = null;
+            musicPlayerPrepared = false;
             teamChatBuddyApplication.setPlayingMusic(false);
         }
     }
@@ -7197,6 +7199,7 @@ public class Commande {
 
         CMD_STOP_MUSIC();
         musicPlayer = new MediaPlayer();
+        musicPlayerPrepared = false;
         musicPlayer.setAudioAttributes(new AudioAttributes.Builder()
                 .setUsage(AudioAttributes.USAGE_MEDIA)
                 .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
@@ -7214,12 +7217,17 @@ public class Commande {
         musicPlayer.setOnPreparedListener(new MediaPlayer.OnPreparedListener() {
             @Override
             public void onPrepared(MediaPlayer mp) {
+                musicPlayerPrepared = true;
+                Log.i("MUSIC_DEBUG", "onPrepared() → isOnApp=" + teamChatBuddyApplication.isOnApp + ", isPlayingMusic=" + teamChatBuddyApplication.isPlayingMusic());
                 translate("CMD_MUSIC", new ITranslationCallback() {
                     @Override
                     public void onTranslated(String translatedText) {
                         teamChatBuddyApplication.setPlayingMusic(true);
                         if (teamChatBuddyApplication.isOnApp) {
+                            Log.i("MUSIC_DEBUG", "onTranslated() → start() appelé");
                             musicPlayer.start();
+                        } else {
+                            Log.w("MUSIC_DEBUG", "onTranslated() → app en pause, start() ignoré");
                         }
                         if (translatedText.contains("No_message_defined")) {
                             teamChatBuddyApplication.setTimeToExecuteNextCommande(true);
