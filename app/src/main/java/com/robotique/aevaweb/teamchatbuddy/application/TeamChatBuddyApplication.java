@@ -290,6 +290,8 @@ public class TeamChatBuddyApplication extends BuddyApplication {
     private VoicesList voiceList;
     private TtsOpenAI ttsOpenAI;
     private String chosenTTS = "";
+    private int currentTTSFallbackIndex = 0;
+    private String lastTTSType = "";
     private int remainingAttempts;
     private Boolean appIsCurrentlyDealingWithTheQuestion = false;
     private Boolean BIExecution = false;
@@ -3676,6 +3678,9 @@ public class TeamChatBuddyApplication extends BuddyApplication {
                     });
         }
 
+        currentTTSFallbackIndex = 0;
+        lastTTSType = type;
+
         try {
             setTTSAfterDetectingLanguage();
             Log.i("TEST_voix","ConfigFile --> Text_To_Speech_List : "+getParamFromFile("Text_To_Speech_List",configurationFilePseudo));
@@ -5259,17 +5264,14 @@ public class TeamChatBuddyApplication extends BuddyApplication {
 
     }
 
-    private void tryNextFallbackTTS(String text, ITTSCallbacks ittsCallbacks) {
+    public void tryNextTTSFromList(String text, ITTSCallbacks ittsCallbacks) {
         String[] listTTS = getParamFromFile("Text_To_Speech_List", configurationFilePseudo).split("/");
-        String primaryTTS = getChosenTTS().trim();
-        int alreadyTriedUpTo = -1;
-        for (int i = 0; i < listTTS.length; i++) {
-            String tts = listTTS[i].trim();
-            if (tts.equalsIgnoreCase(primaryTTS) || tts.equalsIgnoreCase("ReadSpeaker")) {
-                if (i > alreadyTriedUpTo) alreadyTriedUpTo = i;
-            }
-        }
-        tryFallbackFromIndex(listTTS, alreadyTriedUpTo + 1, text, ittsCallbacks);
+        currentTTSFallbackIndex++;
+        tryFallbackFromIndex(listTTS, currentTTSFallbackIndex, text, ittsCallbacks);
+    }
+
+    private void tryNextFallbackTTS(String text, ITTSCallbacks ittsCallbacks) {
+        tryNextTTSFromList(text, ittsCallbacks);
     }
 
     private void tryFallbackFromIndex(String[] listTTS, int index, String text, ITTSCallbacks ittsCallbacks) {
@@ -5278,8 +5280,10 @@ public class TeamChatBuddyApplication extends BuddyApplication {
             ittsCallbacks.onError("No TTS available for this language");
             return;
         }
+        currentTTSFallbackIndex = index;
         String nextTTS = listTTS[index].trim();
-        Log.i("TEST_voix", "tryFallbackFromIndex: trying " + nextTTS);
+        Log.i("TEST_voix", "tryFallbackFromIndex: trying " + nextTTS + " (index " + index + ")");
+
         if (nextTTS.equalsIgnoreCase("Android")) {
             try {
                 initFallbackTTS(getCurrentLanguage());
@@ -5302,8 +5306,62 @@ public class TeamChatBuddyApplication extends BuddyApplication {
                 Log.e(TAG, "tryFallbackFromIndex Android exception: " + e.getMessage());
                 tryFallbackFromIndex(listTTS, index + 1, text, ittsCallbacks);
             }
+
+        } else if (nextTTS.equalsIgnoreCase("ReadSpeaker")) {
+            usingReadSpeaker = false;
+            String langCode = getCurrentLanguage();
+            String defaultVoice = getReadSpeakerVoiceFromLangCode(langCode);
+            String validatedVoice = (defaultVoice != null && !defaultVoice.isEmpty()) ? checkReadSpeakerVoices(defaultVoice) : "";
+            if (validatedVoice != null && !validatedVoice.isEmpty()) {
+                usingReadSpeaker = true;
+                BuddySDK.Speech.setSpeakerVoice(validatedVoice);
+                try {
+                    BuddySDK.Speech.startSpeaking(text, LabialExpression.SPEAK_NEUTRAL, new ITTSCallback.Stub() {
+                        @Override
+                        public void onSuccess(String iText) throws RemoteException {
+                            usingReadSpeaker = false;
+                            new Handler(Looper.getMainLooper()).post(() -> ittsCallbacks.onSuccess(text));
+                        }
+                        @Override
+                        public void onError(String iError) throws RemoteException {
+                            usingReadSpeaker = false;
+                            Log.e("TEST_voix", "tryFallbackFromIndex: ReadSpeaker error: " + iError);
+                            new Handler(Looper.getMainLooper()).post(() -> tryFallbackFromIndex(listTTS, index + 1, text, ittsCallbacks));
+                        }
+                        @Override public void onPause() throws RemoteException {}
+                        @Override public void onResume() throws RemoteException {}
+                    });
+                } catch (Exception e) {
+                    usingReadSpeaker = false;
+                    Log.e(TAG, "tryFallbackFromIndex ReadSpeaker exception: " + e.getMessage());
+                    tryFallbackFromIndex(listTTS, index + 1, text, ittsCallbacks);
+                }
+            } else {
+                Log.i("TEST_voix", "tryFallbackFromIndex: ReadSpeaker no voice for " + langCode + ", trying next");
+                tryFallbackFromIndex(listTTS, index + 1, text, ittsCallbacks);
+            }
+
+        } else if (nextTTS.equalsIgnoreCase("ApiGoogle")) {
+            usingReadSpeaker = false;
+            String langToUse = (!getLanguageDetected().isEmpty() && isLangSupportedByMLKit(getLanguageDetected()))
+                    ? getLanguageDetected() : getCurrentLanguage();
+            List<String> googleTTSLangs = getLanguageCodeForDisponibleLangue("Language_Code_Used_In_GoogleCloud_TTS");
+            List<String> mlkitLangs = getLanguageCodeForDisponibleLangue("Language_Code_Used_In_Mlkit");
+            int langIndex = mlkitLangs.indexOf(langToUse);
+            if (langIndex == -1) {
+                langIndex = Arrays.asList("fr", "en", "es", "de", "it", "ja", "ar", "cmn", "da", "nl", "nb").indexOf(langToUse);
+            }
+            String fullLangCode = (langIndex >= 0 && langIndex < googleTTSLangs.size()) ? googleTTSLangs.get(langIndex) : null;
+            Log.i("TEST_voix", "tryFallbackFromIndex: ApiGoogle lang=" + fullLangCode);
+            speakGoogleCloudTTS(fullLangCode, text, lastTTSType);
+
+        } else if (nextTTS.equalsIgnoreCase("OpenAI")) {
+            usingReadSpeaker = false;
+            Log.i("TEST_voix", "tryFallbackFromIndex: OpenAI");
+            speakOpenAITTS(text, lastTTSType);
+
         } else {
-            Log.i("TEST_voix", "tryFallbackFromIndex: " + nextTTS + " not supported as fallback here, trying next");
+            Log.i("TEST_voix", "tryFallbackFromIndex: " + nextTTS + " not supported, trying next");
             tryFallbackFromIndex(listTTS, index + 1, text, ittsCallbacks);
         }
     }

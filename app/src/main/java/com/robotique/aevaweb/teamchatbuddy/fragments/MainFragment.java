@@ -1940,7 +1940,7 @@ public class MainFragment extends Fragment implements IDBObserver{
                         teamChatBuddyApplication.isMouthMessagePlaying = false;
                         String text = message.split(";")[1];
                         Log.w(TAG,"TTS_ERROR:"+text);
-                        teamChatBuddyApplication.playUsingReadSpeakerCaseError(text, new ITTSCallbacks() {
+                        teamChatBuddyApplication.tryNextTTSFromList(text, new ITTSCallbacks() {
                             @Override
                             public void onSuccess(String s) {
                                 getActivity().runOnUiThread(new Runnable() {

@@ -806,7 +806,7 @@ public class ChatWindowFragment extends Fragment implements IDBObserver {
 
                         Log.w(TAG,"TTS_ERROR:"+text);
 
-                        teamChatBuddyApplication.playUsingReadSpeakerCaseError(text, new ITTSCallbacks() {
+                        teamChatBuddyApplication.tryNextTTSFromList(text, new ITTSCallbacks() {
                             @Override
                             public void onSuccess(String s) {
                                 getActivity().runOnUiThread(new Runnable() {
