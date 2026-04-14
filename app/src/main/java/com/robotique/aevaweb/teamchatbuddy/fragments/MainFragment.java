@@ -1660,7 +1660,12 @@ public class MainFragment extends Fragment implements IDBObserver{
                             Log.i("MYA_QR_H", "update STTHotword_success : "+message);
                             Log.i("MYA_QR", "setActivityClosed ---- 12 ---- ");
                             teamChatBuddyApplication.setStartRecording(true);
-                            teamChatBuddyApplication.listeningState = "qst";
+                            // Délai avant d'accepter un QR question : le user tient encore
+                            // le QR hotword levé, on attend qu'il le baisse
+                            new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                                if (teamChatBuddyApplication.listeningState.equals("hotword"))
+                                    teamChatBuddyApplication.listeningState = "qst";
+                            }, 3000);
                             startListeningFreeSpeech(teamChatBuddyApplication.getListeningDuration());
                         }
                         else if (teamChatBuddyApplication.getparam("Tracking_Activation").contains("yes")){
@@ -1683,7 +1688,12 @@ public class MainFragment extends Fragment implements IDBObserver{
                                 isListeningFreeSpeech = true;
                                 teamChatBuddyApplication.setActivityClosed(false);
                                 teamChatBuddyApplication.setStartRecording(true);
-                                teamChatBuddyApplication.listeningState = "qst";
+                                // Délai avant d'accepter un QR question : le user tient encore
+                                // le QR hotword levé, on attend qu'il le baisse
+                                new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                                    if (teamChatBuddyApplication.listeningState.equals("hotword"))
+                                        teamChatBuddyApplication.listeningState = "qst";
+                                }, 3000);
                                 startListeningFreeSpeech(teamChatBuddyApplication.getListeningDuration());
                             }
                         }
@@ -3890,7 +3900,11 @@ public class MainFragment extends Fragment implements IDBObserver{
      */
 
     private void startListeningFreeSpeech(int duration) {
-        teamChatBuddyApplication.listeningState = "qst";
+        // Si on vient du hotword (état encore "hotword"), le passage à "qst" est géré
+        // par le postDelayed dans le handler STTHotword_success — ne pas l'écraser ici.
+        if (!teamChatBuddyApplication.listeningState.equals("hotword")) {
+            teamChatBuddyApplication.listeningState = "qst";
+        }
 
         Log.d("MYA_fragment"," --- startListeningFreeSpeech("+duration+") ---");
         Boolean notUsingSpeechRecognizer = true;

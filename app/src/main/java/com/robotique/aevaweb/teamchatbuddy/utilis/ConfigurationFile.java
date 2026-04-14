@@ -191,10 +191,10 @@ public class ConfigurationFile {
 
             props.addPropertyComment("Displaying_QRCode_period","");
             props.addPropertyComment("Displaying_QRCode_period","Period for displaying the QRCode in seconds");
-            setProperty("Displaying_QRCode_period","0");
+            setProperty("Displaying_QRCode_period","10");
             props.addPropertyComment("Displaying_QRCode_Duration","Duration for displaying the QRCode in seconds");
             setProperty("Displaying_QRCode_Duration","30");
-            setProperty("QRcodeFileName","qrCode.png");
+            setProperty("QRcodeFileName","capturedImage.png");
             setProperty("QR_Text","SCAN<br>FOR DRINKS<br>AND SNACKS");
 
 
