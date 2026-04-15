@@ -446,7 +446,7 @@ public class MainFragment extends Fragment implements IDBObserver{
                                         Log.i("MYA_fragment", "MainFragment : playStartMessage --- startListeningHotwor 1 ");
                                         teamChatBuddyApplication.startListeningHotwor(getActivity());
                                     }
-                                    reGroup.setTranslationY(1000);
+                                    updateCameraPreviewVisibility();
                                     if (teamChatBuddyApplication.isShouldDisplayQRCode()) {
                                         Log.e(TAG,"playStartMessage fonction Display---------------");
 
@@ -507,7 +507,7 @@ public class MainFragment extends Fragment implements IDBObserver{
                                 Log.i("MYA_fragment", "MainFragment : should startListeningHotwor ");
                             }
                         }
-                        reGroup.setTranslationY(1000);
+                        updateCameraPreviewVisibility();
                         if (teamChatBuddyApplication.isShouldDisplayQRCode() && !qr_displayed) {
 
 
@@ -938,7 +938,12 @@ public class MainFragment extends Fragment implements IDBObserver{
             }
             else {
                 //Log.d("MainFragment", "------------ showCameraQr onResume -------------");
-                teamChatBuddyApplication.notifyObservers("showCameraQr");
+                // Don't show camera preview if QR detection is enabled
+                boolean isQRDetectionActive = teamChatBuddyApplication.getParamFromFile("Lecture_QR_Code", "TeamChatBuddy.properties").trim().equalsIgnoreCase("yes");
+                boolean isDisplayingQRCodeEnabled = !teamChatBuddyApplication.getParamFromFile("Displaying_QRCode_period", "TeamChatBuddy.properties").trim().equalsIgnoreCase("0");
+                if (!(isQRDetectionActive && isDisplayingQRCodeEnabled)) {
+                    teamChatBuddyApplication.notifyObservers("showCameraQr");
+                }
             }
 
             String listeningMode = teamChatBuddyApplication.getparam("listening_mode");
@@ -1337,6 +1342,9 @@ public class MainFragment extends Fragment implements IDBObserver{
                         }
                         else if (!teamChatBuddyApplication.getSpeaking() && !isSpeakingScan && !mlKitIsDownloading){
                             Log.i("MYA_QR", "mouth click commencer l'écoute ");
+                            // NE PAS réinitialiser le flag hotword! Il reste TRUE pendant toute l'écoute
+                            // Forcer listeningState à "qst" pour que les détections soient traitées comme des questions, pas des hotwords
+                            teamChatBuddyApplication.listeningState = "qst";
                             List<String> types = teamChatBuddyApplication.listQRTypes;
                             //cameraUtils = new CameraUtils(this, teamChatBuddyApplication);
                             if(teamChatBuddyApplication.getParamFromFile("Lecture_QR_Code","TeamChatBuddy.properties").trim().equalsIgnoreCase("yes")){
@@ -1834,7 +1842,12 @@ public class MainFragment extends Fragment implements IDBObserver{
                 }
                 else {
                     teamChatBuddyApplication.isStartMsg = false;
-                    teamChatBuddyApplication.notifyObservers("showCameraQr");
+                    // Don't show camera preview if QR detection is enabled
+                    boolean isQRDetectionActive = teamChatBuddyApplication.getParamFromFile("Lecture_QR_Code", "TeamChatBuddy.properties").trim().equalsIgnoreCase("yes");
+                    boolean isDisplayingQRCodeEnabled = !teamChatBuddyApplication.getParamFromFile("Displaying_QRCode_period", "TeamChatBuddy.properties").trim().equalsIgnoreCase("0");
+                    if (!(isQRDetectionActive && isDisplayingQRCodeEnabled)) {
+                        teamChatBuddyApplication.notifyObservers("showCameraQr");
+                    }
 
                     //Log.d("MainFragment", "------------ showCameraQr TTS_success -------------");
                 }
@@ -2435,13 +2448,16 @@ public class MainFragment extends Fragment implements IDBObserver{
             else if (message.equalsIgnoreCase("showCameraQr")){
                 //Log.d("MainFragment", "------------ showCameraQr -------------");
                 getActivity().runOnUiThread(() -> {
-                    // Si Displaying_QRCode est actif : le scan tourne en arrière-plan
-                    // mais on n'affiche jamais la preview caméra (l'image QR est à l'écran)
-                    String displayingPeriod = teamChatBuddyApplication.getParamFromFile("Displaying_QRCode_period","TeamChatBuddy.properties");
-                    boolean displayingQRCodeActive = displayingPeriod != null
-                            && !displayingPeriod.trim().equalsIgnoreCase("0");
-                    if(!teamChatBuddyApplication.isShouldDisplayQRCode() && !displayingQRCodeActive) {
+                    // Check stable config parameters instead of dynamic state
+                    boolean isQRDetectionActive = teamChatBuddyApplication.getParamFromFile("Lecture_QR_Code", "TeamChatBuddy.properties").trim().equalsIgnoreCase("yes");
+                    boolean isDisplayingQRCodeEnabled = !teamChatBuddyApplication.getParamFromFile("Displaying_QRCode_period", "TeamChatBuddy.properties").trim().equalsIgnoreCase("0");
+
+                    if (!(isQRDetectionActive && isDisplayingQRCodeEnabled)) {
+                        Log.d("CAMERA_PREVIEW_DEBUG", "showCameraQr message - SHOWING previewView_qr (QR preview camera)");
                         previewView_qr.setTranslationY(0);
+                    } else {
+                        Log.d("CAMERA_PREVIEW_DEBUG", "showCameraQr message - NOT showing previewView_qr (Displaying_QRCode is active)");
+                        previewView_qr.setTranslationY(100000);
                     }
                 });
             }
@@ -3164,8 +3180,14 @@ public class MainFragment extends Fragment implements IDBObserver{
                     Log.e("TEST_QR"," onFinish QR code ---------------");
                     if(teamChatBuddyApplication.getparam("Tracking_Activation").contains("yes")){
                         if (Boolean.parseBoolean(teamChatBuddyApplication.getparam("Tracking_Camera_Display"))) {
-                            reGroup.setTranslationY(1000);
-                            teamChatBuddyApplication.notifyObservers("showCameraQr");
+                            Log.d("CAMERA_PREVIEW_DEBUG", "Line 3165 - HIDING preview (onFinish QR code countdown)");
+                            setReGroupTranslationY(1000);
+                            // Don't show camera preview if QR detection is enabled
+                            boolean isQRDetectionActive = teamChatBuddyApplication.getParamFromFile("Lecture_QR_Code", "TeamChatBuddy.properties").trim().equalsIgnoreCase("yes");
+                            boolean isDisplayingQRCodeEnabled = !teamChatBuddyApplication.getParamFromFile("Displaying_QRCode_period", "TeamChatBuddy.properties").trim().equalsIgnoreCase("0");
+                            if (!(isQRDetectionActive && isDisplayingQRCodeEnabled)) {
+                                teamChatBuddyApplication.notifyObservers("showCameraQr");
+                            }
                             //Log.d("MainFragment", "------------ showCameraQr finish countdown get Data -------------");
                         }
                     }
@@ -3177,14 +3199,20 @@ public class MainFragment extends Fragment implements IDBObserver{
                                 teamChatBuddyApplication.setShouldDisplayQRCode(false);
                                 if(teamChatBuddyApplication.getparam("Tracking_Activation").contains("yes")){
                                     if (Boolean.parseBoolean(teamChatBuddyApplication.getparam("Tracking_Camera_Display"))) {
-                                        reGroup.setTranslationY(0);
+                                        updateCameraPreviewVisibility();
                                         if(!teamChatBuddyApplication.getParamFromFile("Displaying_QRCode_period","TeamChatBuddy.properties").trim().equalsIgnoreCase("0")){
                                             teamChatBuddyApplication.notifyObservers("hideCameraQr");
                                             //Log.d("MainFragment", "------------ hideCameraQr getData onFinish -------------");
                                         }
                                     } else {
-                                        reGroup.setTranslationY(1000);
-                                        teamChatBuddyApplication.notifyObservers("showCameraQr");
+                                        Log.d("CAMERA_PREVIEW_DEBUG", "Line 3184 - HIDING preview (Tracking_Camera_Display=false)");
+                                        setReGroupTranslationY(1000);
+                                        // Don't show camera preview if QR detection is enabled
+                                        boolean isQRDetectionActive = teamChatBuddyApplication.getParamFromFile("Lecture_QR_Code", "TeamChatBuddy.properties").trim().equalsIgnoreCase("yes");
+                                        boolean isDisplayingQRCodeEnabled = !teamChatBuddyApplication.getParamFromFile("Displaying_QRCode_period", "TeamChatBuddy.properties").trim().equalsIgnoreCase("0");
+                                        if (!(isQRDetectionActive && isDisplayingQRCodeEnabled)) {
+                                            teamChatBuddyApplication.notifyObservers("showCameraQr");
+                                        }
                                         //Log.d("MainFragment", "------------ showCameraQr finish getData tracking -------------");
                                     }
                                 }
@@ -3910,6 +3938,8 @@ public class MainFragment extends Fragment implements IDBObserver{
         if (!teamChatBuddyApplication.listeningState.equals("hotword")) {
             teamChatBuddyApplication.listeningState = "qst";
         }
+        // NE PAS réinitialiser le flag hotword! Il doit rester TRUE pendant toute l'écoute
+        // pour que checkTheHotword ne soit appelée qu'UNE SEULE FOIS
 
         Log.d("MYA_fragment"," --- startListeningFreeSpeech("+duration+") ---");
         Boolean notUsingSpeechRecognizer = true;
@@ -3988,6 +4018,9 @@ public class MainFragment extends Fragment implements IDBObserver{
 
     private void startCycle() {
         Log.e(TAG,"startCycle  after handler ");
+        // NE PAS réinitialiser le flag hotword! Il reste TRUE pendant toute l'écoute
+        // Forcer listeningState à "qst" pour que les détections soient traitées comme des questions
+        teamChatBuddyApplication.listeningState = "qst";
         Boolean notUsingSpeechRecognizer =true;
         isListeningFreeSpeech = true;
         teamChatBuddyApplication.setMessageError(false);
@@ -4369,6 +4402,63 @@ public class MainFragment extends Fragment implements IDBObserver{
         cameraUtils.readyCamera(types);
     }
 
+    /**
+     * Helper method to determine if camera preview should be hidden
+     * Preview must be hidden if QR/AprilTag detection is enabled (Lecture_QR_Code=yes)
+     * AND Displaying_QRCode is enabled (Displaying_QRCode_period != "0")
+     */
+    private boolean shouldHideCameraPreview() {
+        boolean isQRDetectionActive = teamChatBuddyApplication.getParamFromFile("Lecture_QR_Code", "TeamChatBuddy.properties").trim().equalsIgnoreCase("yes");
+        boolean isDisplayingQRCodeEnabled = !teamChatBuddyApplication.getParamFromFile("Displaying_QRCode_period", "TeamChatBuddy.properties").trim().equalsIgnoreCase("0");
+        boolean shouldHide = isQRDetectionActive && isDisplayingQRCodeEnabled;
+        Log.d("CAMERA_PREVIEW_DEBUG", "shouldHideCameraPreview - QRDetection:" + isQRDetectionActive + ", DisplayingQRCode:" + isDisplayingQRCodeEnabled + ", Result:" + shouldHide);
+        return shouldHide;
+    }
+
+    /**
+     * CENTRALIZED METHOD: Set reGroup visibility with automatic QR detection check
+     * If Displaying_QRCode is enabled, preview is ALWAYS hidden regardless of requested value
+     */
+    private void setReGroupTranslationY(float translationY) {
+        if (reGroup == null) return;
+
+        // FORCE hide preview if Displaying_QRCode is enabled
+        if (shouldHideCameraPreview()) {
+            Log.d("CAMERA_PREVIEW_DEBUG", "setReGroupTranslationY() - FORCING HIDE (Displaying_QRCode active)");
+            reGroup.setTranslationY(1000);
+        } else {
+            Log.d("CAMERA_PREVIEW_DEBUG", "setReGroupTranslationY() - Setting to: " + translationY);
+            reGroup.setTranslationY(translationY);
+        }
+    }
+
+    /**
+     * Update camera preview visibility based on QR/AprilTag detection settings
+     */
+    private void updateCameraPreviewVisibility() {
+        if (reGroup == null) {
+            Log.w("CAMERA_PREVIEW_DEBUG", "updateCameraPreviewVisibility - reGroup is NULL");
+            return;
+        }
+
+        boolean shouldHide = shouldHideCameraPreview();
+        if (shouldHide) {
+            // Always hide preview if both QR detection and Displaying_QRCode are enabled
+            Log.d("CAMERA_PREVIEW_DEBUG", "updateCameraPreviewVisibility - HIDING preview (QR detection + Displaying enabled)");
+            setReGroupTranslationY(1000);
+        } else if (Boolean.parseBoolean(teamChatBuddyApplication.getparam("Tracking_Camera_Display"))) {
+            if (layoutTexteQR.getVisibility() == View.VISIBLE && layoutQRCode.getVisibility() == View.VISIBLE) {
+                Log.d("CAMERA_PREVIEW_DEBUG", "updateCameraPreviewVisibility - HIDING preview (QR layout visible)");
+                setReGroupTranslationY(1000);
+            } else {
+                Log.d("CAMERA_PREVIEW_DEBUG", "updateCameraPreviewVisibility - SHOWING preview (Tracking enabled, QR layout not visible)");
+                setReGroupTranslationY(0);
+            }
+        } else {
+            Log.d("CAMERA_PREVIEW_DEBUG", "updateCameraPreviewVisibility - HIDING preview (Tracking disabled)");
+            setReGroupTranslationY(1000);
+        }
+    }
 
     /**
      * ----------------------------------------- Tracking ---------------------------------------
@@ -4828,17 +4918,7 @@ public class MainFragment extends Fragment implements IDBObserver{
                                 getActivity().runOnUiThread(new Runnable() {
                                     @Override
                                     public void run() {
-                                        if (Boolean.parseBoolean(teamChatBuddyApplication.getparam("Tracking_Camera_Display"))) {
-                                            if( layoutTexteQR.getVisibility() == View.VISIBLE && layoutQRCode.getVisibility() == View.VISIBLE){
-                                                reGroup.setTranslationY(1000);
-                                            }
-                                            else{
-                                                reGroup.setTranslationY(0);
-                                            }
-
-                                        } else {
-                                            reGroup.setTranslationY(1000);
-                                        }
+                                        updateCameraPreviewVisibility();
                                     }
                                 });
                             }
@@ -5011,16 +5091,7 @@ public class MainFragment extends Fragment implements IDBObserver{
                                 getActivity().runOnUiThread(new Runnable() {
                                     @Override
                                     public void run() {
-                                        if (Boolean.parseBoolean(teamChatBuddyApplication.getparam("Tracking_Camera_Display"))) {
-                                            if( layoutTexteQR.getVisibility() == View.VISIBLE && layoutQRCode.getVisibility() == View.VISIBLE){
-                                                reGroup.setTranslationY(1000);
-                                            }
-                                            else{
-                                                reGroup.setTranslationY(0);
-                                            }
-                                        } else {
-                                            reGroup.setTranslationY(1000);
-                                        }
+                                        updateCameraPreviewVisibility();
                                     }
                                 });
                             }
@@ -5052,7 +5123,8 @@ public class MainFragment extends Fragment implements IDBObserver{
     }
 
     private void stopTracking(){
-        reGroup.setTranslationY(1000);
+        Log.d("CAMERA_PREVIEW_DEBUG", "stopTracking() - HIDING preview");
+        setReGroupTranslationY(1000);
         cameraProvider.unbindAll();
         handlerCheckPersonDetection.removeCallbacks(runnableCheckPersonDetection);
         handlerCheckPersonDetection.removeCallbacksAndMessages(null);
@@ -5385,7 +5457,12 @@ public class MainFragment extends Fragment implements IDBObserver{
                 @Override
                 public void onFinish() {
                     Log.d(TAG, "timerDisplay QRCode onFinish");
-                    teamChatBuddyApplication.notifyObservers("showCameraQr");
+                    // Don't show camera preview if QR detection is enabled
+                    boolean isQRDetectionActive = teamChatBuddyApplication.getParamFromFile("Lecture_QR_Code", "TeamChatBuddy.properties").trim().equalsIgnoreCase("yes");
+                    boolean isDisplayingQRCodeEnabled = !teamChatBuddyApplication.getParamFromFile("Displaying_QRCode_period", "TeamChatBuddy.properties").trim().equalsIgnoreCase("0");
+                    if (!(isQRDetectionActive && isDisplayingQRCodeEnabled)) {
+                        teamChatBuddyApplication.notifyObservers("showCameraQr");
+                    }
 
                     qrTimeRemaining=0;
                     qr_displayed=false;
@@ -5421,7 +5498,12 @@ public class MainFragment extends Fragment implements IDBObserver{
         else {
             iDisplayQrCodeCallback.onEnd();
             teamChatBuddyApplication.setShouldDisplayQRCode(false);
-            teamChatBuddyApplication.notifyObservers("showCameraQr");
+            // Don't show camera preview if QR detection is enabled
+            boolean isQRDetectionActive = teamChatBuddyApplication.getParamFromFile("Lecture_QR_Code", "TeamChatBuddy.properties").trim().equalsIgnoreCase("yes");
+            boolean isDisplayingQRCodeEnabled = !teamChatBuddyApplication.getParamFromFile("Displaying_QRCode_period", "TeamChatBuddy.properties").trim().equalsIgnoreCase("0");
+            if (!(isQRDetectionActive && isDisplayingQRCodeEnabled)) {
+                teamChatBuddyApplication.notifyObservers("showCameraQr");
+            }
             //Log.d("MainFragment", "------------ showCameraQr displayQRCode -------------");
         }
     }
