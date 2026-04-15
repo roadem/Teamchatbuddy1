@@ -2435,7 +2435,12 @@ public class MainFragment extends Fragment implements IDBObserver{
             else if (message.equalsIgnoreCase("showCameraQr")){
                 //Log.d("MainFragment", "------------ showCameraQr -------------");
                 getActivity().runOnUiThread(() -> {
-                    if(!teamChatBuddyApplication.isShouldDisplayQRCode()) {
+                    // Si Displaying_QRCode est actif : le scan tourne en arrière-plan
+                    // mais on n'affiche jamais la preview caméra (l'image QR est à l'écran)
+                    String displayingPeriod = teamChatBuddyApplication.getParamFromFile("Displaying_QRCode_period","TeamChatBuddy.properties");
+                    boolean displayingQRCodeActive = displayingPeriod != null
+                            && !displayingPeriod.trim().equalsIgnoreCase("0");
+                    if(!teamChatBuddyApplication.isShouldDisplayQRCode() && !displayingQRCodeActive) {
                         previewView_qr.setTranslationY(0);
                     }
                 });
