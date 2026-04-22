@@ -127,6 +127,28 @@ public class MainFragment extends Fragment implements IDBObserver{
     private RelativeLayout buddy_texte_qst_lyt;
     private RelativeLayout buddy_texte_resp_lyt;
     private RelativeLayout lyt_open_menu_settings;
+    private View lyt_settings_touch_zone;
+    private boolean settingsButtonHiddenByUser = false;
+    private boolean settingsBtnLongPressTriggered = false;
+    private final Handler settingsRevealHandler = new Handler(Looper.getMainLooper());
+    private final Runnable settingsRevealRunnable = () -> {
+        settingsBtnLongPressTriggered = true;
+        toggleSettingsBtn();
+    };
+
+    private void toggleSettingsBtn() {
+        if (lyt_open_menu_settings == null) return;
+        settingsButtonHiddenByUser = !settingsButtonHiddenByUser;
+        applySettingsBtnVisibility();
+        teamChatBuddyApplication.setparam("settings_button_hidden", String.valueOf(settingsButtonHiddenByUser));
+        Log.d(TAG, "Settings button toggled - New state: " + (settingsButtonHiddenByUser ? "HIDDEN" : "VISIBLE"));
+    }
+
+    private void applySettingsBtnVisibility() {
+        if (lyt_open_menu_settings != null) {
+            lyt_open_menu_settings.setVisibility(settingsButtonHiddenByUser ? View.INVISIBLE : View.VISIBLE);
+        }
+    }
     private RelativeLayout lyt_open_menu_chat;
     private RelativeLayout view_face;
     private RelativeLayout launch_view;
@@ -682,6 +704,7 @@ public class MainFragment extends Fragment implements IDBObserver{
         buddy_texte_resp = view.findViewById( R.id.buddy_texte_resp );
         buddy_texte_resp_lyt = view.findViewById( R.id.buddy_texte_resp_lyt );
         lyt_open_menu_settings = view.findViewById( R.id.lyt_open_menu_settings );
+        lyt_settings_touch_zone = view.findViewById( R.id.lyt_settings_touch_zone );
         lyt_open_menu_chat = view.findViewById( R.id.lyt_open_menu_chat );
         view_face = view.findViewById(R.id.view_face);
         launch_view = view.findViewById(R.id.launch_view);
@@ -704,9 +727,64 @@ public class MainFragment extends Fragment implements IDBObserver{
         textViewQRMessage = view.findViewById(R.id.textViewQRMessage);
         previewView_qr = view.findViewById(R.id.previewView_qr);
 
+        // Initialize settings button as VISIBLE by default (first time ever)
+        String firstInitDone = teamChatBuddyApplication.getparam("settings_button_first_init");
+        if (firstInitDone == null) {
+            // First initialization - set button to VISIBLE
+            teamChatBuddyApplication.setparam("settings_button_hidden", "false");
+            teamChatBuddyApplication.setparam("settings_button_first_init", "true");
+            settingsButtonHiddenByUser = false;
+            applySettingsBtnVisibility();
+            Log.d(TAG, "Settings button first init: set to VISIBLE");
+        } else {
+            // Load the saved toggle state for subsequent launches
+            String hiddenState = teamChatBuddyApplication.getparam("settings_button_hidden");
+            settingsButtonHiddenByUser = (hiddenState != null && hiddenState.equals("true"));
+            applySettingsBtnVisibility();
+            Log.d(TAG, "Settings button loaded state: " + (settingsButtonHiddenByUser ? "HIDDEN" : "VISIBLE"));
+        }
 
-        lyt_open_menu_settings.setOnClickListener(v -> btnOpenSettings(v));
         lyt_open_menu_chat.setOnClickListener(v -> btnOpenChat(v));
+
+        // Settings button: tap court = ouvrir settings, appui long 5s = toggle visibilite
+        lyt_open_menu_settings.setOnClickListener(null);
+        lyt_open_menu_settings.setOnTouchListener((v, event) -> {
+            switch (event.getActionMasked()) {
+                case MotionEvent.ACTION_DOWN:
+                    settingsBtnLongPressTriggered = false;
+                    settingsRevealHandler.removeCallbacks(settingsRevealRunnable);
+                    settingsRevealHandler.postDelayed(settingsRevealRunnable, 5000);
+                    Log.d(TAG, "Long press started on settings button");
+                    return true;
+                case MotionEvent.ACTION_UP:
+                    settingsRevealHandler.removeCallbacks(settingsRevealRunnable);
+                    if (!settingsBtnLongPressTriggered) {
+                        btnOpenSettings(v);
+                    }
+                    return true;
+                case MotionEvent.ACTION_CANCEL:
+                    settingsRevealHandler.removeCallbacks(settingsRevealRunnable);
+                    return true;
+            }
+            return false;
+        });
+
+        // Zone tactile cachee: appui long 5s pour faire reapparaitre le bouton quand il est invisible
+        lyt_settings_touch_zone.setOnTouchListener((v, event) -> {
+            switch (event.getActionMasked()) {
+                case MotionEvent.ACTION_DOWN:
+                    settingsBtnLongPressTriggered = false;
+                    settingsRevealHandler.removeCallbacks(settingsRevealRunnable);
+                    settingsRevealHandler.postDelayed(settingsRevealRunnable, 5000);
+                    Log.d(TAG, "Long press started on settings zone");
+                    return true;
+                case MotionEvent.ACTION_UP:
+                case MotionEvent.ACTION_CANCEL:
+                    settingsRevealHandler.removeCallbacks(settingsRevealRunnable);
+                    return true;
+            }
+            return false;
+        });
 
         Intent myIntent = getActivity().getIntent();
         isFirstLaunch = true;
@@ -895,6 +973,19 @@ public class MainFragment extends Fragment implements IDBObserver{
         } catch (Exception e) {
             Log.e(TAG, "Erreur lors du resume de AlertManager: " + e.getMessage());
         }
+        
+        // Restore settings button visibility state on resume (from settings or other fragments)
+        if (lyt_open_menu_settings != null) {
+            String hiddenState = teamChatBuddyApplication.getparam("settings_button_hidden");
+            if (hiddenState != null && hiddenState.equals("true")) {
+                settingsButtonHiddenByUser = true;
+                applySettingsBtnVisibility();
+            } else {
+                settingsButtonHiddenByUser = false;
+                applySettingsBtnVisibility();
+            }
+        }
+        
         init();
         if(!MainActivity.isFirstLaunch){
             String qrDisplayedStr = teamChatBuddyApplication.getparam("qr_displayed");
@@ -1405,13 +1496,16 @@ public class MainFragment extends Fragment implements IDBObserver{
                                 if (teamChatBuddyApplication.getParamFromFile("Number_clicks_options","TeamChatBuddy.properties")!=null ){
                                     String Number_clicks_options = teamChatBuddyApplication.getParamFromFile("Number_clicks_options","TeamChatBuddy.properties");
                                     if(Number_clicks_options.equals("")||Integer.parseInt(Number_clicks_options)<=0){
-                                        lyt_open_menu_settings.setVisibility(View.INVISIBLE);
+                                        // Respect the toggle state instead of always hiding
+                                        applySettingsBtnVisibility();
                                     }
                                     else{
-                                        lyt_open_menu_settings.setVisibility(View.VISIBLE);
+                                        // Respect the toggle state instead of always hiding
+                                        applySettingsBtnVisibility();
                                     }
                                 }else {
-                                    lyt_open_menu_settings.setVisibility(View.INVISIBLE);
+                                    // Respect the toggle state instead of always hiding
+                                    applySettingsBtnVisibility();
                                 }
                                 lyt_open_menu_chat.setVisibility(View.VISIBLE);
                                 try {
@@ -1798,7 +1892,7 @@ public class MainFragment extends Fragment implements IDBObserver{
                                     buddy_texte_qst_lyt.setVisibility(View.VISIBLE);
                                     buddy_texte_qst.setMovementMethod(new ScrollingMovementMethod());
                                     buddy_texte_qst.scrollTo(0, 0);
-                                    lyt_open_menu_settings.setVisibility(View.INVISIBLE);
+                                    applySettingsBtnVisibility();
                                     lyt_open_menu_chat.setVisibility(View.INVISIBLE);
                                 }
                                 String time = new SimpleDateFormat("HH:mm:ss").format(new Date());
@@ -1870,13 +1964,13 @@ public class MainFragment extends Fragment implements IDBObserver{
                         if (teamChatBuddyApplication.getParamFromFile("Number_clicks_options","TeamChatBuddy.properties")!=null ){
                             String Number_clicks_options = teamChatBuddyApplication.getParamFromFile("Number_clicks_options","TeamChatBuddy.properties");
                             if(Number_clicks_options.equals("")||Integer.parseInt(Number_clicks_options)<=0){
-                                lyt_open_menu_settings.setVisibility(View.INVISIBLE);
+                                applySettingsBtnVisibility();
                             }
                             else{
-                                lyt_open_menu_settings.setVisibility(View.VISIBLE);
+                                applySettingsBtnVisibility();
                             }
                         }else {
-                            lyt_open_menu_settings.setVisibility(View.INVISIBLE);
+                            applySettingsBtnVisibility();
                         }
                         lyt_open_menu_chat.setVisibility(View.VISIBLE);
                         isSpeaking = false;
@@ -1991,13 +2085,13 @@ public class MainFragment extends Fragment implements IDBObserver{
                                             if (teamChatBuddyApplication.getParamFromFile("Number_clicks_options","TeamChatBuddy.properties")!=null ){
                                                 String Number_clicks_options = teamChatBuddyApplication.getParamFromFile("Number_clicks_options","TeamChatBuddy.properties");
                                                 if(Number_clicks_options.equals("")||Integer.parseInt(Number_clicks_options)<=0){
-                                                    lyt_open_menu_settings.setVisibility(View.INVISIBLE);
+                                                    applySettingsBtnVisibility();
                                                 }
                                                 else{
-                                                    lyt_open_menu_settings.setVisibility(View.VISIBLE);
+                                                    applySettingsBtnVisibility();
                                                 }
                                             }else {
-                                                lyt_open_menu_settings.setVisibility(View.INVISIBLE);
+                                                applySettingsBtnVisibility();
                                             }
                                             lyt_open_menu_chat.setVisibility(View.VISIBLE);
                                             isSpeaking =false;
@@ -2103,13 +2197,13 @@ public class MainFragment extends Fragment implements IDBObserver{
                                                     if (teamChatBuddyApplication.getParamFromFile("Number_clicks_options","TeamChatBuddy.properties")!=null ){
                                                         String Number_clicks_options = teamChatBuddyApplication.getParamFromFile("Number_clicks_options","TeamChatBuddy.properties");
                                                         if(Number_clicks_options.equals("")||Integer.parseInt(Number_clicks_options)<=0){
-                                                            lyt_open_menu_settings.setVisibility(View.INVISIBLE);
+                                                            applySettingsBtnVisibility();
                                                         }
                                                         else{
-                                                            lyt_open_menu_settings.setVisibility(View.VISIBLE);
+                                                            applySettingsBtnVisibility();
                                                         }
                                                     }else {
-                                                        lyt_open_menu_settings.setVisibility(View.INVISIBLE);
+                                                        applySettingsBtnVisibility();
                                                     }
                                                     lyt_open_menu_chat.setVisibility(View.VISIBLE);
                                                     isSpeaking =false;
@@ -2337,13 +2431,13 @@ public class MainFragment extends Fragment implements IDBObserver{
                 if (teamChatBuddyApplication.getParamFromFile("Number_clicks_options","TeamChatBuddy.properties")!=null ){
                     String Number_clicks_options = teamChatBuddyApplication.getParamFromFile("Number_clicks_options","TeamChatBuddy.properties");
                     if(Number_clicks_options.equals("")||Integer.parseInt(Number_clicks_options)<=0){
-                        lyt_open_menu_settings.setVisibility(View.INVISIBLE);
+                        applySettingsBtnVisibility();
                     }
                     else{
-                        lyt_open_menu_settings.setVisibility(View.VISIBLE);
+                        applySettingsBtnVisibility();
                     }
                 }else {
-                    lyt_open_menu_settings.setVisibility(View.INVISIBLE);
+                    applySettingsBtnVisibility();
                 }
                 lyt_open_menu_chat.setVisibility(View.VISIBLE);
                 try {
@@ -2768,7 +2862,7 @@ public class MainFragment extends Fragment implements IDBObserver{
                     buddy_texte_qst_lyt.setVisibility(View.VISIBLE);
                     buddy_texte_qst.setMovementMethod(new ScrollingMovementMethod());
                     buddy_texte_qst.scrollTo(0, 0);
-                    lyt_open_menu_settings.setVisibility(View.INVISIBLE);
+                    applySettingsBtnVisibility();
                     lyt_open_menu_chat.setVisibility(View.INVISIBLE);
                 }
                 String time = new SimpleDateFormat("HH:mm:ss").format(new Date());
@@ -2833,6 +2927,16 @@ public class MainFragment extends Fragment implements IDBObserver{
      * ----------------- Utils ---------------------------
      */
 
+    /**
+     * Restore settings button visibility based on toggle state
+     * Respects the user's long-press toggle preference
+     */
+    private void restoreSettingsButtonVisibility() {
+        if (lyt_open_menu_settings != null) {
+            applySettingsBtnVisibility();
+        }
+    }
+
     private void init() {
         Log.e(TAG,"init() ");
         try {
@@ -2852,7 +2956,7 @@ public class MainFragment extends Fragment implements IDBObserver{
         buddy_texte_resp_lyt.setVisibility(View.INVISIBLE);
         buddy_texte_qst.setMovementMethod(null);
         buddy_texte_resp.setMovementMethod(null);
-        lyt_open_menu_settings.setVisibility(View.INVISIBLE);
+        applySettingsBtnVisibility();
         lyt_open_menu_chat.setVisibility(View.VISIBLE);
 
         commande = new Commande(requireActivity());
@@ -2991,13 +3095,13 @@ public class MainFragment extends Fragment implements IDBObserver{
         if (teamChatBuddyApplication.getParamFromFile("Number_clicks_options","TeamChatBuddy.properties")!=null ){
             String Number_clicks_options = teamChatBuddyApplication.getParamFromFile("Number_clicks_options","TeamChatBuddy.properties");
             if(Number_clicks_options.equals("")||Integer.parseInt(Number_clicks_options)<=0){
-                lyt_open_menu_settings.setVisibility(View.INVISIBLE);
+                applySettingsBtnVisibility();
             }
             else{
-                lyt_open_menu_settings.setVisibility(View.VISIBLE);
+                applySettingsBtnVisibility();
             }
         }else {
-            lyt_open_menu_settings.setVisibility(View.INVISIBLE);
+            applySettingsBtnVisibility();
         }
         //init Settings
         settingClass=new Setting();
@@ -3346,7 +3450,7 @@ public class MainFragment extends Fragment implements IDBObserver{
                     if(fill!="")buddy_texte_resp.setText(fill+"\n"+"\n" + segment.trim());
                     else buddy_texte_resp.setText(title+" : "+segment.trim());
 
-                    lyt_open_menu_settings.setVisibility(View.INVISIBLE);
+                    applySettingsBtnVisibility();
                     lyt_open_menu_chat.setVisibility(View.INVISIBLE);
 
 
@@ -4173,7 +4277,7 @@ public class MainFragment extends Fragment implements IDBObserver{
                                     });
                                 }
                                 if(type.equals("storedResponse")){
-                                    lyt_open_menu_settings.setVisibility(View.INVISIBLE);
+                                    applySettingsBtnVisibility();
                                     lyt_open_menu_chat.setVisibility(View.INVISIBLE);
                                     if(buddy_texte_qst_lyt.getVisibility() != View.VISIBLE) buddy_texte_resp_lyt.setTranslationY(-155);
                                     else buddy_texte_resp_lyt.setTranslationY(0);
@@ -4289,7 +4393,7 @@ public class MainFragment extends Fragment implements IDBObserver{
                                 isSplitStreamingNews = true;
                                 streamSpeakSegments(texte, respo[0], type);
                             }
-                            lyt_open_menu_settings.setVisibility(View.INVISIBLE);
+                            applySettingsBtnVisibility();
                             lyt_open_menu_chat.setVisibility(View.INVISIBLE);
                             if(buddy_texte_qst_lyt.getVisibility() != View.VISIBLE) buddy_texte_resp_lyt.setTranslationY(-155);
                             else buddy_texte_resp_lyt.setTranslationY(0);
@@ -4353,7 +4457,7 @@ public class MainFragment extends Fragment implements IDBObserver{
                                     }
                                 } );
                             }
-                            lyt_open_menu_settings.setVisibility(View.INVISIBLE);
+                            applySettingsBtnVisibility();
                             lyt_open_menu_chat.setVisibility(View.INVISIBLE);
                             if(buddy_texte_qst_lyt.getVisibility() != View.VISIBLE) buddy_texte_resp_lyt.setTranslationY(-155);
                             else buddy_texte_resp_lyt.setTranslationY(0);
@@ -5231,13 +5335,13 @@ public class MainFragment extends Fragment implements IDBObserver{
                             if (teamChatBuddyApplication.getParamFromFile("Number_clicks_options","TeamChatBuddy.properties")!=null ){
                                 String Number_clicks_options = teamChatBuddyApplication.getParamFromFile("Number_clicks_options","TeamChatBuddy.properties");
                                 if(Number_clicks_options.equals("")||Integer.parseInt(Number_clicks_options)<=0){
-                                    lyt_open_menu_settings.setVisibility(View.INVISIBLE);
+                                    applySettingsBtnVisibility();
                                 }
                                 else{
-                                    lyt_open_menu_settings.setVisibility(View.VISIBLE);
+                                    applySettingsBtnVisibility();
                                 }
                             }else {
-                                lyt_open_menu_settings.setVisibility(View.INVISIBLE);
+                                applySettingsBtnVisibility();
                             }
                             lyt_open_menu_chat.setVisibility(View.VISIBLE);
                             try {
