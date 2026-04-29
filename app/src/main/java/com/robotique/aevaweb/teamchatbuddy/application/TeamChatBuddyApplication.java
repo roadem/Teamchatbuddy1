@@ -3218,34 +3218,32 @@ public class TeamChatBuddyApplication extends BuddyApplication {
 
                 hotwordAlreadyHandled = true;
 
-                listeningState = "qst";
+                // On garde listeningState = "hotword" pendant le délai de debounce :
+                // les frames suivantes de caméra détectant le même QR arriveront
+                // dans checkTheHotword() et seront ignorées grâce à hotwordAlreadyHandled.
+                // L'état passe à "qst" uniquement après le délai, évitant la double détection.
                 new Handler(Looper.getMainLooper()).postDelayed(() -> {
 
-                    // Vérification : toujours en mode hotword ?
-                    if (listeningState.equals("hotword")) {
+                    if (listeningState.equals("hotword")) listeningState = "qst";
+                    isAprilTagProcessing.set(false);
+                    isListeningHotw = false;
+                    Log.i("OpenAITTS", "------------------------ checkHotw isListeningHotw = false ");
 
-                        //listeningState = "qst";
-                        isAprilTagProcessing.set(false);
-                        isListeningHotw = false;
-                        Log.i("OpenAITTS", "------------------------ checkHotw isListeningHotw = false ");
+                    if(type.equalsIgnoreCase("AprilTag")||type.equalsIgnoreCase("DataMatrix")||type.equalsIgnoreCase("QRCode")) {
+                        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+                        String scanTXT = "[" + sdf.format(new Date()) + "] - " + type + " - " + word + System.getProperty("line.separator");
+                        File file = new File(Environment.getExternalStorageDirectory(), "TeamChatBuddy/Scan_History.txt");
 
-                        if(type.equalsIgnoreCase("AprilTag")||type.equalsIgnoreCase("DataMatrix")||type.equalsIgnoreCase("QRCode")) {
-                            SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-                            String scanTXT = "[" + sdf.format(new Date()) + "] - " + type + " - " + word + System.getProperty("line.separator");
-                            File file = new File(Environment.getExternalStorageDirectory(), "TeamChatBuddy/Scan_History.txt");
-
-                            try {
-                                FileWriter fileWriter = new FileWriter(file, true);
-                                fileWriter.write(scanTXT);
-                                fileWriter.close();
-                            } catch (IOException e) {
-                                e.printStackTrace();
-                            }
+                        try {
+                            FileWriter fileWriter = new FileWriter(file, true);
+                            fileWriter.write(scanTXT);
+                            fileWriter.close();
+                        } catch (IOException e) {
+                            e.printStackTrace();
                         }
-
                     }
 
-                }, 1500);
+                }, 3000);
 
                 // On notifie UNE SEULE FOIS
                 notifyObservers("STTHotword_success");

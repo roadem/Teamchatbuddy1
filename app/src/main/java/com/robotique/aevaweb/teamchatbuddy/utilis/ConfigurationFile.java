@@ -120,7 +120,7 @@ public class ConfigurationFile {
 
             props.addPropertyComment("Seuil_dBFS", "");
             props.addPropertyComment("Seuil_dBFS","Decibel threshold to control the sensitivity of the STT Whisper");
-            setProperty("Seuil_dBFS","-30");
+            setProperty("Seuil_dBFS","-35");
             setProperty("Whisper_model","whisper-1");
             setProperty("Whisper_prompt","Buddy");
 
@@ -187,7 +187,7 @@ public class ConfigurationFile {
             props.addPropertyComment("Listening_time","");
             props.addPropertyComment("Listening_time","Maximum listening time (seconds) and number of successive listens");
             setProperty("Listening_time","10");
-            setProperty("Number_listens","2");
+            setProperty("Number_listens","1");
 
             props.addPropertyComment("Displaying_QRCode_period","");
             props.addPropertyComment("Displaying_QRCode_period","Period for displaying the QRCode in seconds");
@@ -299,11 +299,11 @@ public class ConfigurationFile {
 
             props.addPropertyComment("ovh_identifier", "");
             props.addPropertyComment("ovh_identifier", "Unique identifier for the OVH Mail-to-SMS service");
-            setProperty("ovh_identifier", "sms-fb3019-2");
+            setProperty("ovh_identifier", "");
             props.addPropertyComment("ovh_login", "OVH SMS account identifier (login)");
-            setProperty("ovh_login", "aeva");
-            setProperty("ovh_customer_password", "Aeva2025");
-            setProperty("ovh_mail", "email2sms@ovh.net");
+            setProperty("ovh_login", "");
+            setProperty("ovh_customer_password", "");
+            setProperty("ovh_mail", "");
             props.addPropertyComment("ovh_num_sender", "Sender's number (international format).");
             setProperty("ovh_num_sender", "");
 
@@ -353,7 +353,7 @@ public class ConfigurationFile {
             setProperty("Speak_color","blue");
 
             props.addPropertyComment("Mouth_messages","");
-            setProperty("Mouth_messages","Yes");
+            setProperty("Mouth_messages","No");
 
             String[] Mouth_listen_fr = {"Comment puis-je vous aider ?/Que puis-je faire pour vous ?/Comment puis-je vous assister ?/Y a-t-il quelque chose avec laquelle je peux vous aider ?/Y a-t-il quelque chose que je peux faire pour vous ?/Comment puis-je vous soutenir ? Y a-t-il quelque chose avec laquelle je peux vous être utile ?"};
             String[] Mouth_speak_fr = {"D'accord, j'arrête d'écouter/Très bien, je me tais/Pas de problème, je fais une pause/Compris, je n'écoute plus/Bien sûr, je suis en attente/Écoute désactivée"};
@@ -426,7 +426,7 @@ public class ConfigurationFile {
             props.addPropertyComment("ALERT_ACTIVITY","");
             props.addPropertyComment("ALERT_ACTIVITY","Alert parameters");
             props.addPropertyComment("ALERT_ACTIVITY", "Enable or disable inactivity alerts (Yes/No)");
-            setProperty("ALERT_ACTIVITY", "Yes");
+            setProperty("ALERT_ACTIVITY", "No");
 
             props.addPropertyComment("ALERT_DURATION", "Alert duration threshold in minutes before triggering inactivity alert");
             setProperty("ALERT_DURATION", "120");
@@ -440,9 +440,9 @@ public class ConfigurationFile {
             props.addPropertyComment("ALERT_REPETITIONS", "Number of detections required to consider a presence/activity detection as valid.");
             setProperty("ALERT_REPETITIONS", "1");
             props.addPropertyComment("ALERT_MAIL", "Email address of the user receiving the alert");
-            setProperty("ALERT_MAIL", "fatimazahra.aeva@gmail.com");
+            setProperty("ALERT_MAIL", "");
             props.addPropertyComment("ALERT_SMS", "Phone number of the user receiving the SMS alert (international format)");
-            setProperty("ALERT_SMS", "0727127338");
+            setProperty("ALERT_SMS", "");
 
             props.addPropertyComment("ALERT_TOOL", "Alert sending method: SMS, MAIL, or both (SMS/MAIL)");
             setProperty("ALERT_TOOL", "SMS/MAIL");
@@ -481,8 +481,6 @@ public class ConfigurationFile {
             setProperty("CMD_fr_14","Montre-moi une image de chien rouge <CMD_IMAGE chien rouge>");
             setProperty("CMD_fr_15","Ferme l'image <CMD_CLOSE_IMAGE>");
             setProperty("CMD_fr_16","Génère-moi une musique de « jazz avec une trompette » <CMD_MUSIC jazz avec une trompette>");
-            setProperty("CMD_fr_45","Envoie à « Pierre paul » le mail « voici mon message » <CMD_MAIL [Pierre-paul] [voici mon message]>");
-            setProperty("CMD_fr_47","Envoie à « Pierre paul » le sms « bonjour quoi de neuf  » <CMD_SMS [Pierre-paul] [bonjour quoi de neuf ]>");
 
             props.addPropertyComment("COMMAND_Prompt_en","CMD_fr_17=Mets la température à zéro <CMD_TEMP 0>");
             props.addPropertyComment("COMMAND_Prompt_en","CMD_fr_18=Avance sur 3 mètres <CMD_MOVE 3>");
@@ -512,7 +510,9 @@ public class ConfigurationFile {
             props.addPropertyComment("COMMAND_Prompt_en","CMD_fr_42=Sauve l’image comme « oiseau bleu » <CMD_SAVE_IMAGE oiseau_bleu>");
             props.addPropertyComment("COMMAND_Prompt_en","CMD_fr_43=Affiche l’image « oiseau bleu » <CMD_SHOW_IMAGE oiseau_bleu>");
             props.addPropertyComment("COMMAND_Prompt_en","CMD_fr_44=Supprime l’image « oiseau bleu » <CMD_DEL_IMAGE oiseau_bleu>");
+            props.addPropertyComment("COMMAND_Prompt_en","CMD_fr_45=Envoie à « Pierre paul » le mail « voici mon message » <CMD_MAIL [Pierre-paul] [voici mon message]>");
             props.addPropertyComment("COMMAND_Prompt_en","CMD_fr_46= Donne-moi les dernières informations (depuis 3 heures) <CMD_NEWS 3>");
+            props.addPropertyComment("COMMAND_Prompt_en","CMD_fr_47=Envoie à « Pierre paul » le sms « bonjour quoi de neuf  » <CMD_SMS [Pierre-paul] [bonjour quoi de neuf ]>");
 
             setProperty( "COMMAND_Prompt_en", "You are a voice command assistant. Based on the user's sentence, respond only with the corresponding commands enclosed in <> if they exist, separated by spaces. If no command matches, do not respond. Do not add any explanations or additional text. ");
 
@@ -532,8 +532,6 @@ public class ConfigurationFile {
             setProperty("CMD_en_14", "Show me an image of a red dog <CMD_IMAGE red dog>");
             setProperty("CMD_en_15", "Close the image <CMD_CLOSE_IMAGE>");
             setProperty("CMD_en_16", "Generate music « jazz with a trumpet » <CMD_MUSIC jazz with a trumpet>");
-            setProperty("CMD_en_45", "Send to « Pierre paul » the email « here is my message »  <CMD_MAIL [Pierre-Paul] [here is my message]>");
-            setProperty("CMD_en_47", "Send to « Pierre paul » the sms « hello how are you »  <CMD_SMS [Pierre-Paul] [hello how are you]>");
 
             props.addPropertyComment("CMD_MUSIC_fr", "CMD_en_17=Set the temperature to zero <CMD_TEMP 0>");
             props.addPropertyComment("CMD_MUSIC_fr", "CMD_en_18=Move forward 3 meters <CMD_MOVE 3>");
@@ -563,7 +561,9 @@ public class ConfigurationFile {
             props.addPropertyComment("CMD_MUSIC_fr", "CMD_en_42=Save the image as « blue bird » <CMD_SAVE_IMAGE blue_bird>");
             props.addPropertyComment("CMD_MUSIC_fr", "CMD_en_43=Displays the « blue bird » image <CMD_SHOW_IMAGE blue_bird>");
             props.addPropertyComment("CMD_MUSIC_fr", "CMD_en_44=Delete the « blue bird » image < CMD_DEL_IMAGE blue_bird>");
+            props.addPropertyComment("CMD_MUSIC_fr", "CMD_en_45=Send to « Pierre paul » the email « here is my message »  <CMD_MAIL [Pierre-Paul] [here is my message]>");
             props.addPropertyComment("CMD_MUSIC_fr", "CMD_en_46=Give me the latest news (from the past 3 hours) <CMD_NEWS 3>");
+            props.addPropertyComment("CMD_MUSIC_fr", "CMD_en_47=Send to « Pierre paul » the sms « hello how are you »  <CMD_SMS [Pierre-Paul] [hello how are you]>");
 
 
             setProperty( "CMD_MUSIC_fr", "Ok, je vais lire une musique correspondant à votre demande // Voila // Je n’arrive pas à générer la musique[1]" );
@@ -754,13 +754,13 @@ public class ConfigurationFile {
             setProperty("NEWS_ARTICLE_BBC_id","div.sc-666b6d83-0");
 
             props.addPropertyComment("mail_pierre-paul", "");
-            setProperty("mail_pierre-paul","fatimazahra.aeva@gmail.com");
+            setProperty("mail_pierre-paul","b.fache@teamnet.fr");
             setProperty("CMD_MAIL_subject_en","Email from TeamChatBuddy");
             setProperty("CMD_MAIL_subject_fr","Mail de TeamChatBuddy");
 
             props.addPropertyComment("sms_pierre-paul", "");
             props.addPropertyComment("sms_pierre-paul", "Phone number to receive sms (international format)");
-            setProperty("sms_pierre-paul","0727127338");
+            setProperty("sms_pierre-paul","0605040908");
 
 
             //-------------------------- Tracking ---------------------------

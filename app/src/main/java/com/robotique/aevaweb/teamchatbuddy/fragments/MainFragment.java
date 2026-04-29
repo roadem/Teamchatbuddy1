@@ -127,6 +127,28 @@ public class MainFragment extends Fragment implements IDBObserver{
     private RelativeLayout buddy_texte_qst_lyt;
     private RelativeLayout buddy_texte_resp_lyt;
     private RelativeLayout lyt_open_menu_settings;
+    private View lyt_settings_touch_zone;
+    private boolean settingsButtonHiddenByUser = false;
+    private boolean settingsBtnLongPressTriggered = false;
+    private final Handler settingsRevealHandler = new Handler(Looper.getMainLooper());
+    private final Runnable settingsRevealRunnable = () -> {
+        settingsBtnLongPressTriggered = true;
+        toggleSettingsBtn();
+    };
+
+    private void toggleSettingsBtn() {
+        if (lyt_open_menu_settings == null) return;
+        settingsButtonHiddenByUser = !settingsButtonHiddenByUser;
+        applySettingsBtnVisibility();
+        teamChatBuddyApplication.setparam("settings_button_hidden", String.valueOf(settingsButtonHiddenByUser));
+        Log.d(TAG, "Settings button toggled - New state: " + (settingsButtonHiddenByUser ? "HIDDEN" : "VISIBLE"));
+    }
+
+    private void applySettingsBtnVisibility() {
+        if (lyt_open_menu_settings != null) {
+            lyt_open_menu_settings.setVisibility(settingsButtonHiddenByUser ? View.INVISIBLE : View.VISIBLE);
+        }
+    }
     private RelativeLayout lyt_open_menu_chat;
     private RelativeLayout view_face;
     private RelativeLayout launch_view;
@@ -446,7 +468,7 @@ public class MainFragment extends Fragment implements IDBObserver{
                                         Log.i("MYA_fragment", "MainFragment : playStartMessage --- startListeningHotwor 1 ");
                                         teamChatBuddyApplication.startListeningHotwor(getActivity());
                                     }
-                                    reGroup.setTranslationY(1000);
+                                    updateCameraPreviewVisibility();
                                     if (teamChatBuddyApplication.isShouldDisplayQRCode()) {
                                         Log.e(TAG,"playStartMessage fonction Display---------------");
 
@@ -507,7 +529,7 @@ public class MainFragment extends Fragment implements IDBObserver{
                                 Log.i("MYA_fragment", "MainFragment : should startListeningHotwor ");
                             }
                         }
-                        reGroup.setTranslationY(1000);
+                        updateCameraPreviewVisibility();
                         if (teamChatBuddyApplication.isShouldDisplayQRCode() && !qr_displayed) {
 
 
@@ -682,6 +704,7 @@ public class MainFragment extends Fragment implements IDBObserver{
         buddy_texte_resp = view.findViewById( R.id.buddy_texte_resp );
         buddy_texte_resp_lyt = view.findViewById( R.id.buddy_texte_resp_lyt );
         lyt_open_menu_settings = view.findViewById( R.id.lyt_open_menu_settings );
+        lyt_settings_touch_zone = view.findViewById( R.id.lyt_settings_touch_zone );
         lyt_open_menu_chat = view.findViewById( R.id.lyt_open_menu_chat );
         view_face = view.findViewById(R.id.view_face);
         launch_view = view.findViewById(R.id.launch_view);
@@ -704,9 +727,64 @@ public class MainFragment extends Fragment implements IDBObserver{
         textViewQRMessage = view.findViewById(R.id.textViewQRMessage);
         previewView_qr = view.findViewById(R.id.previewView_qr);
 
+        // Initialize settings button as VISIBLE by default (first time ever)
+        String firstInitDone = teamChatBuddyApplication.getparam("settings_button_first_init");
+        if (firstInitDone == null) {
+            // First initialization - set button to VISIBLE
+            teamChatBuddyApplication.setparam("settings_button_hidden", "false");
+            teamChatBuddyApplication.setparam("settings_button_first_init", "true");
+            settingsButtonHiddenByUser = false;
+            applySettingsBtnVisibility();
+            Log.d(TAG, "Settings button first init: set to VISIBLE");
+        } else {
+            // Load the saved toggle state for subsequent launches
+            String hiddenState = teamChatBuddyApplication.getparam("settings_button_hidden");
+            settingsButtonHiddenByUser = (hiddenState != null && hiddenState.equals("true"));
+            applySettingsBtnVisibility();
+            Log.d(TAG, "Settings button loaded state: " + (settingsButtonHiddenByUser ? "HIDDEN" : "VISIBLE"));
+        }
 
-        lyt_open_menu_settings.setOnClickListener(v -> btnOpenSettings(v));
         lyt_open_menu_chat.setOnClickListener(v -> btnOpenChat(v));
+
+        // Settings button: tap court = ouvrir settings, appui long 5s = toggle visibilite
+        lyt_open_menu_settings.setOnClickListener(null);
+        lyt_open_menu_settings.setOnTouchListener((v, event) -> {
+            switch (event.getActionMasked()) {
+                case MotionEvent.ACTION_DOWN:
+                    settingsBtnLongPressTriggered = false;
+                    settingsRevealHandler.removeCallbacks(settingsRevealRunnable);
+                    settingsRevealHandler.postDelayed(settingsRevealRunnable, 5000);
+                    Log.d(TAG, "Long press started on settings button");
+                    return true;
+                case MotionEvent.ACTION_UP:
+                    settingsRevealHandler.removeCallbacks(settingsRevealRunnable);
+                    if (!settingsBtnLongPressTriggered) {
+                        btnOpenSettings(v);
+                    }
+                    return true;
+                case MotionEvent.ACTION_CANCEL:
+                    settingsRevealHandler.removeCallbacks(settingsRevealRunnable);
+                    return true;
+            }
+            return false;
+        });
+
+        // Zone tactile cachee: appui long 5s pour faire reapparaitre le bouton quand il est invisible
+        lyt_settings_touch_zone.setOnTouchListener((v, event) -> {
+            switch (event.getActionMasked()) {
+                case MotionEvent.ACTION_DOWN:
+                    settingsBtnLongPressTriggered = false;
+                    settingsRevealHandler.removeCallbacks(settingsRevealRunnable);
+                    settingsRevealHandler.postDelayed(settingsRevealRunnable, 5000);
+                    Log.d(TAG, "Long press started on settings zone");
+                    return true;
+                case MotionEvent.ACTION_UP:
+                case MotionEvent.ACTION_CANCEL:
+                    settingsRevealHandler.removeCallbacks(settingsRevealRunnable);
+                    return true;
+            }
+            return false;
+        });
 
         Intent myIntent = getActivity().getIntent();
         isFirstLaunch = true;
@@ -895,6 +973,19 @@ public class MainFragment extends Fragment implements IDBObserver{
         } catch (Exception e) {
             Log.e(TAG, "Erreur lors du resume de AlertManager: " + e.getMessage());
         }
+        
+        // Restore settings button visibility state on resume (from settings or other fragments)
+        if (lyt_open_menu_settings != null) {
+            String hiddenState = teamChatBuddyApplication.getparam("settings_button_hidden");
+            if (hiddenState != null && hiddenState.equals("true")) {
+                settingsButtonHiddenByUser = true;
+                applySettingsBtnVisibility();
+            } else {
+                settingsButtonHiddenByUser = false;
+                applySettingsBtnVisibility();
+            }
+        }
+        
         init();
         if(!MainActivity.isFirstLaunch){
             String qrDisplayedStr = teamChatBuddyApplication.getparam("qr_displayed");
@@ -938,7 +1029,9 @@ public class MainFragment extends Fragment implements IDBObserver{
             }
             else {
                 //Log.d("MainFragment", "------------ showCameraQr onResume -------------");
-                teamChatBuddyApplication.notifyObservers("showCameraQr");
+                if (!shouldHideCameraPreview()) {
+                    teamChatBuddyApplication.notifyObservers("showCameraQr");
+                }
             }
 
             String listeningMode = teamChatBuddyApplication.getparam("listening_mode");
@@ -1337,6 +1430,9 @@ public class MainFragment extends Fragment implements IDBObserver{
                         }
                         else if (!teamChatBuddyApplication.getSpeaking() && !isSpeakingScan && !mlKitIsDownloading){
                             Log.i("MYA_QR", "mouth click commencer l'écoute ");
+                            // NE PAS réinitialiser le flag hotword! Il reste TRUE pendant toute l'écoute
+                            // Forcer listeningState à "qst" pour que les détections soient traitées comme des questions, pas des hotwords
+                            teamChatBuddyApplication.listeningState = "qst";
                             List<String> types = teamChatBuddyApplication.listQRTypes;
                             //cameraUtils = new CameraUtils(this, teamChatBuddyApplication);
                             if(teamChatBuddyApplication.getParamFromFile("Lecture_QR_Code","TeamChatBuddy.properties").trim().equalsIgnoreCase("yes")){
@@ -1397,13 +1493,16 @@ public class MainFragment extends Fragment implements IDBObserver{
                                 if (teamChatBuddyApplication.getParamFromFile("Number_clicks_options","TeamChatBuddy.properties")!=null ){
                                     String Number_clicks_options = teamChatBuddyApplication.getParamFromFile("Number_clicks_options","TeamChatBuddy.properties");
                                     if(Number_clicks_options.equals("")||Integer.parseInt(Number_clicks_options)<=0){
-                                        lyt_open_menu_settings.setVisibility(View.INVISIBLE);
+                                        // Respect the toggle state instead of always hiding
+                                        applySettingsBtnVisibility();
                                     }
                                     else{
-                                        lyt_open_menu_settings.setVisibility(View.VISIBLE);
+                                        // Respect the toggle state instead of always hiding
+                                        applySettingsBtnVisibility();
                                     }
                                 }else {
-                                    lyt_open_menu_settings.setVisibility(View.INVISIBLE);
+                                    // Respect the toggle state instead of always hiding
+                                    applySettingsBtnVisibility();
                                 }
                                 lyt_open_menu_chat.setVisibility(View.VISIBLE);
                                 try {
@@ -1660,7 +1759,12 @@ public class MainFragment extends Fragment implements IDBObserver{
                             Log.i("MYA_QR_H", "update STTHotword_success : "+message);
                             Log.i("MYA_QR", "setActivityClosed ---- 12 ---- ");
                             teamChatBuddyApplication.setStartRecording(true);
-                            teamChatBuddyApplication.listeningState = "qst";
+                            // Délai avant d'accepter un QR question : le user tient encore
+                            // le QR hotword levé, on attend qu'il le baisse
+                            new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                                if (teamChatBuddyApplication.listeningState.equals("hotword"))
+                                    teamChatBuddyApplication.listeningState = "qst";
+                            }, 3000);
                             startListeningFreeSpeech(teamChatBuddyApplication.getListeningDuration());
                         }
                         else if (teamChatBuddyApplication.getparam("Tracking_Activation").contains("yes")){
@@ -1683,7 +1787,12 @@ public class MainFragment extends Fragment implements IDBObserver{
                                 isListeningFreeSpeech = true;
                                 teamChatBuddyApplication.setActivityClosed(false);
                                 teamChatBuddyApplication.setStartRecording(true);
-                                teamChatBuddyApplication.listeningState = "qst";
+                                // Délai avant d'accepter un QR question : le user tient encore
+                                // le QR hotword levé, on attend qu'il le baisse
+                                new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                                    if (teamChatBuddyApplication.listeningState.equals("hotword"))
+                                        teamChatBuddyApplication.listeningState = "qst";
+                                }, 3000);
                                 startListeningFreeSpeech(teamChatBuddyApplication.getListeningDuration());
                             }
                         }
@@ -1824,7 +1933,9 @@ public class MainFragment extends Fragment implements IDBObserver{
                 }
                 else {
                     teamChatBuddyApplication.isStartMsg = false;
-                    teamChatBuddyApplication.notifyObservers("showCameraQr");
+                    if (!shouldHideCameraPreview()) {
+                        teamChatBuddyApplication.notifyObservers("showCameraQr");
+                    }
 
                     //Log.d("MainFragment", "------------ showCameraQr TTS_success -------------");
                 }
@@ -1847,13 +1958,13 @@ public class MainFragment extends Fragment implements IDBObserver{
                         if (teamChatBuddyApplication.getParamFromFile("Number_clicks_options","TeamChatBuddy.properties")!=null ){
                             String Number_clicks_options = teamChatBuddyApplication.getParamFromFile("Number_clicks_options","TeamChatBuddy.properties");
                             if(Number_clicks_options.equals("")||Integer.parseInt(Number_clicks_options)<=0){
-                                lyt_open_menu_settings.setVisibility(View.INVISIBLE);
+                                applySettingsBtnVisibility();
                             }
                             else{
-                                lyt_open_menu_settings.setVisibility(View.VISIBLE);
+                                applySettingsBtnVisibility();
                             }
                         }else {
-                            lyt_open_menu_settings.setVisibility(View.INVISIBLE);
+                            applySettingsBtnVisibility();
                         }
                         lyt_open_menu_chat.setVisibility(View.VISIBLE);
                         isSpeaking = false;
@@ -1968,13 +2079,13 @@ public class MainFragment extends Fragment implements IDBObserver{
                                             if (teamChatBuddyApplication.getParamFromFile("Number_clicks_options","TeamChatBuddy.properties")!=null ){
                                                 String Number_clicks_options = teamChatBuddyApplication.getParamFromFile("Number_clicks_options","TeamChatBuddy.properties");
                                                 if(Number_clicks_options.equals("")||Integer.parseInt(Number_clicks_options)<=0){
-                                                    lyt_open_menu_settings.setVisibility(View.INVISIBLE);
+                                                    applySettingsBtnVisibility();
                                                 }
                                                 else{
-                                                    lyt_open_menu_settings.setVisibility(View.VISIBLE);
+                                                    applySettingsBtnVisibility();
                                                 }
                                             }else {
-                                                lyt_open_menu_settings.setVisibility(View.INVISIBLE);
+                                                applySettingsBtnVisibility();
                                             }
                                             lyt_open_menu_chat.setVisibility(View.VISIBLE);
                                             isSpeaking =false;
@@ -2080,13 +2191,13 @@ public class MainFragment extends Fragment implements IDBObserver{
                                                     if (teamChatBuddyApplication.getParamFromFile("Number_clicks_options","TeamChatBuddy.properties")!=null ){
                                                         String Number_clicks_options = teamChatBuddyApplication.getParamFromFile("Number_clicks_options","TeamChatBuddy.properties");
                                                         if(Number_clicks_options.equals("")||Integer.parseInt(Number_clicks_options)<=0){
-                                                            lyt_open_menu_settings.setVisibility(View.INVISIBLE);
+                                                            applySettingsBtnVisibility();
                                                         }
                                                         else{
-                                                            lyt_open_menu_settings.setVisibility(View.VISIBLE);
+                                                            applySettingsBtnVisibility();
                                                         }
                                                     }else {
-                                                        lyt_open_menu_settings.setVisibility(View.INVISIBLE);
+                                                        applySettingsBtnVisibility();
                                                     }
                                                     lyt_open_menu_chat.setVisibility(View.VISIBLE);
                                                     isSpeaking =false;
@@ -2314,13 +2425,13 @@ public class MainFragment extends Fragment implements IDBObserver{
                 if (teamChatBuddyApplication.getParamFromFile("Number_clicks_options","TeamChatBuddy.properties")!=null ){
                     String Number_clicks_options = teamChatBuddyApplication.getParamFromFile("Number_clicks_options","TeamChatBuddy.properties");
                     if(Number_clicks_options.equals("")||Integer.parseInt(Number_clicks_options)<=0){
-                        lyt_open_menu_settings.setVisibility(View.INVISIBLE);
+                        applySettingsBtnVisibility();
                     }
                     else{
-                        lyt_open_menu_settings.setVisibility(View.VISIBLE);
+                        applySettingsBtnVisibility();
                     }
                 }else {
-                    lyt_open_menu_settings.setVisibility(View.INVISIBLE);
+                    applySettingsBtnVisibility();
                 }
                 lyt_open_menu_chat.setVisibility(View.VISIBLE);
                 try {
@@ -2425,8 +2536,12 @@ public class MainFragment extends Fragment implements IDBObserver{
             else if (message.equalsIgnoreCase("showCameraQr")){
                 //Log.d("MainFragment", "------------ showCameraQr -------------");
                 getActivity().runOnUiThread(() -> {
-                    if(!teamChatBuddyApplication.isShouldDisplayQRCode()) {
+                    if (!shouldHideCameraPreview()) {
+                        Log.d("CAMERA_PREVIEW_DEBUG", "showCameraQr message - SHOWING previewView_qr (QR preview camera)");
                         previewView_qr.setTranslationY(0);
+                    } else {
+                        Log.d("CAMERA_PREVIEW_DEBUG", "showCameraQr message - NOT showing previewView_qr (Displaying_QRCode is active)");
+                        previewView_qr.setTranslationY(100000);
                     }
                 });
             }
@@ -2802,6 +2917,16 @@ public class MainFragment extends Fragment implements IDBObserver{
      * ----------------- Utils ---------------------------
      */
 
+    /**
+     * Restore settings button visibility based on toggle state
+     * Respects the user's long-press toggle preference
+     */
+    private void restoreSettingsButtonVisibility() {
+        if (lyt_open_menu_settings != null) {
+            applySettingsBtnVisibility();
+        }
+    }
+
     private void init() {
         Log.e(TAG,"init() ");
         try {
@@ -2821,7 +2946,7 @@ public class MainFragment extends Fragment implements IDBObserver{
         buddy_texte_resp_lyt.setVisibility(View.INVISIBLE);
         buddy_texte_qst.setMovementMethod(null);
         buddy_texte_resp.setMovementMethod(null);
-        lyt_open_menu_settings.setVisibility(View.INVISIBLE);
+        applySettingsBtnVisibility();
         lyt_open_menu_chat.setVisibility(View.VISIBLE);
 
         commande = new Commande(requireActivity());
@@ -2960,13 +3085,13 @@ public class MainFragment extends Fragment implements IDBObserver{
         if (teamChatBuddyApplication.getParamFromFile("Number_clicks_options","TeamChatBuddy.properties")!=null ){
             String Number_clicks_options = teamChatBuddyApplication.getParamFromFile("Number_clicks_options","TeamChatBuddy.properties");
             if(Number_clicks_options.equals("")||Integer.parseInt(Number_clicks_options)<=0){
-                lyt_open_menu_settings.setVisibility(View.INVISIBLE);
+                applySettingsBtnVisibility();
             }
             else{
-                lyt_open_menu_settings.setVisibility(View.VISIBLE);
+                applySettingsBtnVisibility();
             }
         }else {
-            lyt_open_menu_settings.setVisibility(View.INVISIBLE);
+            applySettingsBtnVisibility();
         }
         //init Settings
         settingClass=new Setting();
@@ -3149,8 +3274,11 @@ public class MainFragment extends Fragment implements IDBObserver{
                     Log.e("TEST_QR"," onFinish QR code ---------------");
                     if(teamChatBuddyApplication.getparam("Tracking_Activation").contains("yes")){
                         if (Boolean.parseBoolean(teamChatBuddyApplication.getparam("Tracking_Camera_Display"))) {
-                            reGroup.setTranslationY(1000);
-                            teamChatBuddyApplication.notifyObservers("showCameraQr");
+                            Log.d("CAMERA_PREVIEW_DEBUG", "Line 3165 - HIDING preview (onFinish QR code countdown)");
+                            setReGroupTranslationY(1000);
+                            if (!shouldHideCameraPreview()) {
+                                teamChatBuddyApplication.notifyObservers("showCameraQr");
+                            }
                             //Log.d("MainFragment", "------------ showCameraQr finish countdown get Data -------------");
                         }
                     }
@@ -3162,14 +3290,17 @@ public class MainFragment extends Fragment implements IDBObserver{
                                 teamChatBuddyApplication.setShouldDisplayQRCode(false);
                                 if(teamChatBuddyApplication.getparam("Tracking_Activation").contains("yes")){
                                     if (Boolean.parseBoolean(teamChatBuddyApplication.getparam("Tracking_Camera_Display"))) {
-                                        reGroup.setTranslationY(0);
+                                        updateCameraPreviewVisibility();
                                         if(!teamChatBuddyApplication.getParamFromFile("Displaying_QRCode_period","TeamChatBuddy.properties").trim().equalsIgnoreCase("0")){
                                             teamChatBuddyApplication.notifyObservers("hideCameraQr");
                                             //Log.d("MainFragment", "------------ hideCameraQr getData onFinish -------------");
                                         }
                                     } else {
-                                        reGroup.setTranslationY(1000);
-                                        teamChatBuddyApplication.notifyObservers("showCameraQr");
+                                        Log.d("CAMERA_PREVIEW_DEBUG", "Line 3184 - HIDING preview (Tracking_Camera_Display=false)");
+                                        setReGroupTranslationY(1000);
+                                        if (!shouldHideCameraPreview()) {
+                                            teamChatBuddyApplication.notifyObservers("showCameraQr");
+                                        }
                                         //Log.d("MainFragment", "------------ showCameraQr finish getData tracking -------------");
                                     }
                                 }
@@ -3890,7 +4021,13 @@ public class MainFragment extends Fragment implements IDBObserver{
      */
 
     private void startListeningFreeSpeech(int duration) {
-        teamChatBuddyApplication.listeningState = "qst";
+        // Si on vient du hotword (état encore "hotword"), le passage à "qst" est géré
+        // par le postDelayed dans le handler STTHotword_success — ne pas l'écraser ici.
+        if (!teamChatBuddyApplication.listeningState.equals("hotword")) {
+            teamChatBuddyApplication.listeningState = "qst";
+        }
+        // NE PAS réinitialiser le flag hotword! Il doit rester TRUE pendant toute l'écoute
+        // pour que checkTheHotword ne soit appelée qu'UNE SEULE FOIS
 
         Log.d("MYA_fragment"," --- startListeningFreeSpeech("+duration+") ---");
         Boolean notUsingSpeechRecognizer = true;
@@ -3969,6 +4106,9 @@ public class MainFragment extends Fragment implements IDBObserver{
 
     private void startCycle() {
         Log.e(TAG,"startCycle  after handler ");
+        // NE PAS réinitialiser le flag hotword! Il reste TRUE pendant toute l'écoute
+        // Forcer listeningState à "qst" pour que les détections soient traitées comme des questions
+        teamChatBuddyApplication.listeningState = "qst";
         Boolean notUsingSpeechRecognizer =true;
         isListeningFreeSpeech = true;
         teamChatBuddyApplication.setMessageError(false);
@@ -4350,6 +4490,64 @@ public class MainFragment extends Fragment implements IDBObserver{
         cameraUtils.readyCamera(types);
     }
 
+    /**
+     * Helper method to determine if camera preview should be hidden
+     * Preview must be hidden if QR/AprilTag detection is enabled (Lecture_QR_Code=yes)
+     * AND Displaying_QRCode is enabled (Displaying_QRCode_period != "0" AND Displaying_QRCode_Duration != "0")
+     */
+    private boolean shouldHideCameraPreview() {
+        boolean isQRDetectionActive = teamChatBuddyApplication.getParamFromFile("Lecture_QR_Code", "TeamChatBuddy.properties").trim().equalsIgnoreCase("yes");
+        boolean isDisplayingQRCodePeriodEnabled = !teamChatBuddyApplication.getParamFromFile("Displaying_QRCode_period", "TeamChatBuddy.properties").trim().equalsIgnoreCase("0");
+        boolean isDisplayingQRCodeDurationEnabled = !teamChatBuddyApplication.getParamFromFile("Displaying_QRCode_Duration", "TeamChatBuddy.properties").trim().equalsIgnoreCase("0");
+        boolean shouldHide = isQRDetectionActive && isDisplayingQRCodePeriodEnabled && isDisplayingQRCodeDurationEnabled;
+        Log.d("CAMERA_PREVIEW_DEBUG", "shouldHideCameraPreview - QRDetection:" + isQRDetectionActive + ", Period:" + isDisplayingQRCodePeriodEnabled + ", Duration:" + isDisplayingQRCodeDurationEnabled + ", Result:" + shouldHide);
+        return shouldHide;
+    }
+
+    /**
+     * CENTRALIZED METHOD: Set reGroup visibility with automatic QR detection check
+     * If Displaying_QRCode is enabled, preview is ALWAYS hidden regardless of requested value
+     */
+    private void setReGroupTranslationY(float translationY) {
+        if (reGroup == null) return;
+
+        // FORCE hide preview if Displaying_QRCode is enabled
+        if (shouldHideCameraPreview()) {
+            Log.d("CAMERA_PREVIEW_DEBUG", "setReGroupTranslationY() - FORCING HIDE (Displaying_QRCode active)");
+            reGroup.setTranslationY(1000);
+        } else {
+            Log.d("CAMERA_PREVIEW_DEBUG", "setReGroupTranslationY() - Setting to: " + translationY);
+            reGroup.setTranslationY(translationY);
+        }
+    }
+
+    /**
+     * Update camera preview visibility based on QR/AprilTag detection settings
+     */
+    private void updateCameraPreviewVisibility() {
+        if (reGroup == null) {
+            Log.w("CAMERA_PREVIEW_DEBUG", "updateCameraPreviewVisibility - reGroup is NULL");
+            return;
+        }
+
+        boolean shouldHide = shouldHideCameraPreview();
+        if (shouldHide) {
+            // Always hide preview if both QR detection and Displaying_QRCode are enabled
+            Log.d("CAMERA_PREVIEW_DEBUG", "updateCameraPreviewVisibility - HIDING preview (QR detection + Displaying enabled)");
+            setReGroupTranslationY(1000);
+        } else if (Boolean.parseBoolean(teamChatBuddyApplication.getparam("Tracking_Camera_Display"))) {
+            if (layoutTexteQR.getVisibility() == View.VISIBLE && layoutQRCode.getVisibility() == View.VISIBLE) {
+                Log.d("CAMERA_PREVIEW_DEBUG", "updateCameraPreviewVisibility - HIDING preview (QR layout visible)");
+                setReGroupTranslationY(1000);
+            } else {
+                Log.d("CAMERA_PREVIEW_DEBUG", "updateCameraPreviewVisibility - SHOWING preview (Tracking enabled, QR layout not visible)");
+                setReGroupTranslationY(0);
+            }
+        } else {
+            Log.d("CAMERA_PREVIEW_DEBUG", "updateCameraPreviewVisibility - HIDING preview (Tracking disabled)");
+            setReGroupTranslationY(1000);
+        }
+    }
 
     /**
      * ----------------------------------------- Tracking ---------------------------------------
@@ -4809,17 +5007,7 @@ public class MainFragment extends Fragment implements IDBObserver{
                                 getActivity().runOnUiThread(new Runnable() {
                                     @Override
                                     public void run() {
-                                        if (Boolean.parseBoolean(teamChatBuddyApplication.getparam("Tracking_Camera_Display"))) {
-                                            if( layoutTexteQR.getVisibility() == View.VISIBLE && layoutQRCode.getVisibility() == View.VISIBLE){
-                                                reGroup.setTranslationY(1000);
-                                            }
-                                            else{
-                                                reGroup.setTranslationY(0);
-                                            }
-
-                                        } else {
-                                            reGroup.setTranslationY(1000);
-                                        }
+                                        updateCameraPreviewVisibility();
                                     }
                                 });
                             }
@@ -4992,16 +5180,7 @@ public class MainFragment extends Fragment implements IDBObserver{
                                 getActivity().runOnUiThread(new Runnable() {
                                     @Override
                                     public void run() {
-                                        if (Boolean.parseBoolean(teamChatBuddyApplication.getparam("Tracking_Camera_Display"))) {
-                                            if( layoutTexteQR.getVisibility() == View.VISIBLE && layoutQRCode.getVisibility() == View.VISIBLE){
-                                                reGroup.setTranslationY(1000);
-                                            }
-                                            else{
-                                                reGroup.setTranslationY(0);
-                                            }
-                                        } else {
-                                            reGroup.setTranslationY(1000);
-                                        }
+                                        updateCameraPreviewVisibility();
                                     }
                                 });
                             }
@@ -5033,7 +5212,8 @@ public class MainFragment extends Fragment implements IDBObserver{
     }
 
     private void stopTracking(){
-        reGroup.setTranslationY(1000);
+        Log.d("CAMERA_PREVIEW_DEBUG", "stopTracking() - HIDING preview");
+        setReGroupTranslationY(1000);
         cameraProvider.unbindAll();
         handlerCheckPersonDetection.removeCallbacks(runnableCheckPersonDetection);
         handlerCheckPersonDetection.removeCallbacksAndMessages(null);
@@ -5140,13 +5320,13 @@ public class MainFragment extends Fragment implements IDBObserver{
                             if (teamChatBuddyApplication.getParamFromFile("Number_clicks_options","TeamChatBuddy.properties")!=null ){
                                 String Number_clicks_options = teamChatBuddyApplication.getParamFromFile("Number_clicks_options","TeamChatBuddy.properties");
                                 if(Number_clicks_options.equals("")||Integer.parseInt(Number_clicks_options)<=0){
-                                    lyt_open_menu_settings.setVisibility(View.INVISIBLE);
+                                    applySettingsBtnVisibility();
                                 }
                                 else{
-                                    lyt_open_menu_settings.setVisibility(View.VISIBLE);
+                                    applySettingsBtnVisibility();
                                 }
                             }else {
-                                lyt_open_menu_settings.setVisibility(View.INVISIBLE);
+                                applySettingsBtnVisibility();
                             }
                             lyt_open_menu_chat.setVisibility(View.VISIBLE);
                             try {
@@ -5366,7 +5546,9 @@ public class MainFragment extends Fragment implements IDBObserver{
                 @Override
                 public void onFinish() {
                     Log.d(TAG, "timerDisplay QRCode onFinish");
-                    teamChatBuddyApplication.notifyObservers("showCameraQr");
+                    if (!shouldHideCameraPreview()) {
+                        teamChatBuddyApplication.notifyObservers("showCameraQr");
+                    }
 
                     qrTimeRemaining=0;
                     qr_displayed=false;
@@ -5402,7 +5584,9 @@ public class MainFragment extends Fragment implements IDBObserver{
         else {
             iDisplayQrCodeCallback.onEnd();
             teamChatBuddyApplication.setShouldDisplayQRCode(false);
-            teamChatBuddyApplication.notifyObservers("showCameraQr");
+            if (!shouldHideCameraPreview()) {
+                teamChatBuddyApplication.notifyObservers("showCameraQr");
+            }
             //Log.d("MainFragment", "------------ showCameraQr displayQRCode -------------");
         }
     }

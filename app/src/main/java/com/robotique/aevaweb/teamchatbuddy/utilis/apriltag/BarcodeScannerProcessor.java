@@ -15,6 +15,7 @@ import com.google.mlkit.vision.barcode.BarcodeScanning;
 import com.google.mlkit.vision.barcode.common.Barcode;
 import com.robotique.aevaweb.teamchatbuddy.utilis.DetectionCallback;
 
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 /** Barcode Detector Demo. */
@@ -53,9 +54,13 @@ public class BarcodeScannerProcessor extends VisionProcessorBase<List<Barcode>> 
         }
         for (int i = 0; i < barcodes.size(); ++i) {
             Barcode barcode = barcodes.get(i);
-            detectionCallback.onDetection(barcode.getRawValue()+";"+ getFormatName(barcode.getFormat()));
+            String rawValue = barcode.getRawValue();
+            if (rawValue == null && barcode.getRawBytes() != null) {
+                rawValue = new String(barcode.getRawBytes(), StandardCharsets.ISO_8859_1);
+            }
+            detectionCallback.onDetection(rawValue + ";" + getFormatName(barcode.getFormat()));
 
-            Log.i("MYA_QR", "run: qr/matrix " + barcode.getRawValue()+";"+ getFormatName(barcode.getFormat()));
+            Log.i("MYA_QR", "run: qr/matrix " + rawValue + ";" + getFormatName(barcode.getFormat()));
             logExtrasForTesting(barcode);
         }
     }
