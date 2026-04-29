@@ -1889,7 +1889,7 @@ public class MainFragment extends Fragment implements IDBObserver{
                                     buddy_texte_qst_lyt.setVisibility(View.VISIBLE);
                                     buddy_texte_qst.setMovementMethod(new ScrollingMovementMethod());
                                     buddy_texte_qst.scrollTo(0, 0);
-                                    applySettingsBtnVisibility();
+                                    lyt_open_menu_settings.setVisibility(View.INVISIBLE);
                                     lyt_open_menu_chat.setVisibility(View.INVISIBLE);
                                 }
                                 String time = new SimpleDateFormat("HH:mm:ss").format(new Date());
@@ -2852,7 +2852,7 @@ public class MainFragment extends Fragment implements IDBObserver{
                     buddy_texte_qst_lyt.setVisibility(View.VISIBLE);
                     buddy_texte_qst.setMovementMethod(new ScrollingMovementMethod());
                     buddy_texte_qst.scrollTo(0, 0);
-                    applySettingsBtnVisibility();
+                    lyt_open_menu_settings.setVisibility(View.INVISIBLE);
                     lyt_open_menu_chat.setVisibility(View.INVISIBLE);
                 }
                 String time = new SimpleDateFormat("HH:mm:ss").format(new Date());
@@ -3434,7 +3434,7 @@ public class MainFragment extends Fragment implements IDBObserver{
                     if(fill!="")buddy_texte_resp.setText(fill+"\n"+"\n" + segment.trim());
                     else buddy_texte_resp.setText(title+" : "+segment.trim());
 
-                    applySettingsBtnVisibility();
+                    lyt_open_menu_settings.setVisibility(View.INVISIBLE);
                     lyt_open_menu_chat.setVisibility(View.INVISIBLE);
 
 
@@ -4261,7 +4261,7 @@ public class MainFragment extends Fragment implements IDBObserver{
                                     });
                                 }
                                 if(type.equals("storedResponse")){
-                                    applySettingsBtnVisibility();
+                                    lyt_open_menu_settings.setVisibility(View.INVISIBLE);
                                     lyt_open_menu_chat.setVisibility(View.INVISIBLE);
                                     if(buddy_texte_qst_lyt.getVisibility() != View.VISIBLE) buddy_texte_resp_lyt.setTranslationY(-155);
                                     else buddy_texte_resp_lyt.setTranslationY(0);
@@ -4377,7 +4377,7 @@ public class MainFragment extends Fragment implements IDBObserver{
                                 isSplitStreamingNews = true;
                                 streamSpeakSegments(texte, respo[0], type);
                             }
-                            applySettingsBtnVisibility();
+                            lyt_open_menu_settings.setVisibility(View.INVISIBLE);
                             lyt_open_menu_chat.setVisibility(View.INVISIBLE);
                             if(buddy_texte_qst_lyt.getVisibility() != View.VISIBLE) buddy_texte_resp_lyt.setTranslationY(-155);
                             else buddy_texte_resp_lyt.setTranslationY(0);
@@ -4441,7 +4441,7 @@ public class MainFragment extends Fragment implements IDBObserver{
                                     }
                                 } );
                             }
-                            applySettingsBtnVisibility();
+                            lyt_open_menu_settings.setVisibility(View.INVISIBLE);
                             lyt_open_menu_chat.setVisibility(View.INVISIBLE);
                             if(buddy_texte_qst_lyt.getVisibility() != View.VISIBLE) buddy_texte_resp_lyt.setTranslationY(-155);
                             else buddy_texte_resp_lyt.setTranslationY(0);
