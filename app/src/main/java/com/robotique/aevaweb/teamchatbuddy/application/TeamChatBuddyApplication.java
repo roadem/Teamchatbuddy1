@@ -228,6 +228,8 @@ public class TeamChatBuddyApplication extends BuddyApplication {
     private  boolean allTextPronoucedSuccess = true;
     private String[] texteToSpeakSplitted;
     public boolean Stop_TTS_ReadSpeaker = false;
+    public long ttsStopTimestamp = 0L;
+    private int readSpeakerRetryCount = 0;
 
     Runnable runnableListeningHotword;
     private Handler handlerListeningHotword =new Handler();
@@ -3394,9 +3396,11 @@ public class TeamChatBuddyApplication extends BuddyApplication {
                                     public void onError(String iError) throws RemoteException {
                                         Log.e(TAG, "Erreur pendant la prononciation 1 : "+iError);
                                         Log.w("FCH_DEBUG", "onError");
+                                        Log.e("MOUTH_DEBUG", "startSpeakingSplitted onError1: " + iError + " Stop_TTS_ReadSpeaker=" + Stop_TTS_ReadSpeaker + " msSinceStop=" + (System.currentTimeMillis() - ttsStopTimestamp));
                                         allTextPronoucedSuccess = false;
                                         currentIndexText++;
-                                        if (!Stop_TTS_ReadSpeaker) {
+                                        // Guard against stale callbacks from a phrase that was recently stopped
+                                        if (!Stop_TTS_ReadSpeaker && System.currentTimeMillis() - ttsStopTimestamp >= 500) {
                                             Log.w("FCH_DEBUG", "onError 1 ");
                                             Handler handler = new Handler(Looper.getMainLooper());
                                             handler.postDelayed(new Runnable() {
@@ -3406,6 +3410,8 @@ public class TeamChatBuddyApplication extends BuddyApplication {
                                                     startSpeakingSplittedText(texteToSpeak, expression, type, texteToSpeakSplitted);
                                                 }
                                             }, 150);
+                                        } else {
+                                            Log.i("MOUTH_DEBUG", "startSpeakingSplitted onError1: ignoré (stop récent ou volontaire)");
                                         }
                                     }
                                     @Override
@@ -3449,14 +3455,15 @@ public class TeamChatBuddyApplication extends BuddyApplication {
                                         Log.e("test_welcome", "Erreur pendant la prononciation 2 : " + iError);
 
                                         Log.w("FCH_DEBUG", "onError");
+                                        Log.e("MOUTH_DEBUG", "startSpeakingSplitted onError2: " + iError + " Stop_TTS_ReadSpeaker=" + Stop_TTS_ReadSpeaker + " msSinceStop=" + (System.currentTimeMillis() - ttsStopTimestamp));
 
                                         allTextPronoucedSuccess = false;
-
 
                                         currentIndexText++;
                                         Log.e("test_welcome", "Erreur pendant la prononciation Stop_TTS_ReadSpeaker : " + Stop_TTS_ReadSpeaker);
 
-                                        if (!Stop_TTS_ReadSpeaker) {
+                                        // Guard against stale callbacks from a phrase that was recently stopped
+                                        if (!Stop_TTS_ReadSpeaker && System.currentTimeMillis() - ttsStopTimestamp >= 500) {
                                             Log.w("FCH_DEBUG", "onError 1 ");
                                             Handler handler = new Handler(Looper.getMainLooper());
                                             handler.postDelayed(new Runnable() {
@@ -3466,6 +3473,8 @@ public class TeamChatBuddyApplication extends BuddyApplication {
                                                     startSpeakingSplittedText(texteToSpeak, expression, type, texteToSpeakSplitted);
                                                 }
                                             }, 150);
+                                        } else {
+                                            Log.i("MOUTH_DEBUG", "startSpeakingSplitted onError2: ignoré (stop récent ou volontaire)");
                                         }
 
                                     }
@@ -3646,6 +3655,7 @@ public class TeamChatBuddyApplication extends BuddyApplication {
         currentIndexText = 0;
         Stop_TTS_ReadSpeaker = false;
         allTextPronoucedSuccess = true;
+        readSpeakerRetryCount = 0;
         Log.w(TAG, "speakTTS : " + texteToSpeak);
 
         currentIndexText = 0;
@@ -3682,6 +3692,7 @@ public class TeamChatBuddyApplication extends BuddyApplication {
         try {
             setTTSAfterDetectingLanguage();
             Log.i("TEST_voix","ConfigFile --> Text_To_Speech_List : "+getParamFromFile("Text_To_Speech_List",configurationFilePseudo));
+            Log.i("MOUTH_DEBUG", "speakTTS: type=" + type + " chosenTTS=" + getChosenTTS() + " usingReadSpeaker=" + usingReadSpeaker + " text=\"" + texteToSpeak + "\"");
 
             if (getChosenTTS().trim().equalsIgnoreCase("ReadSpeaker") && usingReadSpeaker) {
                 Log.i("TEST_voix","SPEAK using TTS ReadSpeaker ");
@@ -3881,7 +3892,7 @@ public class TeamChatBuddyApplication extends BuddyApplication {
                         }
                     });
                 } else {
-                    // Lecture normale
+                    // Lecture normale (ReadSpeaker not available or not the chosen TTS)
                     int result = tts_android.speak(texteToSpeak, TextToSpeech.QUEUE_FLUSH, null, "TTS_UTTERANCE_ID");
                     if (result == -1) {
                         notifyObservers("TTS_error;" + texteToSpeak);
@@ -4056,7 +4067,9 @@ public class TeamChatBuddyApplication extends BuddyApplication {
 
     private void rawStopTTS() {
         Stop_TTS_ReadSpeaker = true;
+        ttsStopTimestamp = System.currentTimeMillis();
         Log.w(TAG, "stopTTS");
+        Log.i("MOUTH_DEBUG", "rawStopTTS: ttsStopTimestamp=" + ttsStopTimestamp);
         Log.w(TAG, "stopTTS_STACK", new Throwable("stopTTS caller"));
         Stop_TTS_ReadSpeaker = true;
         try {
@@ -5251,6 +5264,10 @@ public class TeamChatBuddyApplication extends BuddyApplication {
                         @Override
                         public void onError(String s) throws RemoteException {
                             Log.e("FCH_TEST","start play from TTS error  onERRor - trying next TTS");
+                            if (Stop_TTS_ReadSpeaker) {
+                                Log.w("FCH_TEST", "ReadSpeaker arrêté volontairement, fallback ignoré");
+                                return;
+                            }
                             tryNextFallbackTTS(text, ittsCallbacks);
                         }
                     });
@@ -5264,6 +5281,22 @@ public class TeamChatBuddyApplication extends BuddyApplication {
 
     public void tryNextTTSFromList(String text, ITTSCallbacks ittsCallbacks) {
         String[] listTTS = getParamFromFile("Text_To_Speech_List", configurationFilePseudo).split("/");
+        // If the failing engine is ReadSpeaker and it failed right after a stop (likely "not released yet"),
+        // retry ReadSpeaker at the same index instead of cascading to the next engine.
+        if (readSpeakerRetryCount < 3
+                && currentTTSFallbackIndex < listTTS.length
+                && listTTS[currentTTSFallbackIndex].trim().equalsIgnoreCase("ReadSpeaker")
+                && System.currentTimeMillis() - ttsStopTimestamp < 600) {
+            readSpeakerRetryCount++;
+            Log.i("MOUTH_DEBUG", "tryNextTTSFromList: ReadSpeaker post-stop, retry " + readSpeakerRetryCount + "/3 in 300ms");
+            final String[] listTTSFinal = listTTS;
+            final int indexToRetry = currentTTSFallbackIndex;
+            new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                if (!Stop_TTS_ReadSpeaker) tryFallbackFromIndex(listTTSFinal, indexToRetry, text, ittsCallbacks);
+            }, 300);
+            return;
+        }
+        Log.i("MOUTH_DEBUG", "tryNextTTSFromList: cascading from index " + currentTTSFallbackIndex + " → " + (currentTTSFallbackIndex + 1));
         currentTTSFallbackIndex++;
         tryFallbackFromIndex(listTTS, currentTTSFallbackIndex, text, ittsCallbacks);
     }
@@ -5281,6 +5314,7 @@ public class TeamChatBuddyApplication extends BuddyApplication {
         currentTTSFallbackIndex = index;
         String nextTTS = listTTS[index].trim();
         Log.i("TEST_voix", "tryFallbackFromIndex: trying " + nextTTS + " (index " + index + ")");
+        Log.i("MOUTH_DEBUG", "TTS fallback: trying " + nextTTS + " [" + index + "] for \"" + text + "\"");
 
         if (nextTTS.equalsIgnoreCase("Android")) {
             try {
@@ -5293,8 +5327,8 @@ public class TeamChatBuddyApplication extends BuddyApplication {
                 }
                 Log.i("TEST_voix", "tryFallbackFromIndex: Android TTS speak launched successfully");
                 tts_android.setOnUtteranceProgressListener(new UtteranceProgressListener() {
-                    @Override public void onStart(String utteranceId) { Log.i("TEST_voix", "tryFallbackFromIndex: Android TTS onStart"); }
-                    @Override public void onDone(String utteranceId) { Log.i("TEST_voix", "tryFallbackFromIndex: Android TTS onDone"); ittsCallbacks.onSuccess(text); }
+                    @Override public void onStart(String utteranceId) { Log.i("TEST_voix", "tryFallbackFromIndex: Android TTS onStart"); Log.i("MOUTH_DEBUG", "TTS Android: onStart"); }
+                    @Override public void onDone(String utteranceId) { Log.i("TEST_voix", "tryFallbackFromIndex: Android TTS onDone"); Log.i("MOUTH_DEBUG", "TTS Android: onDone ✓"); ittsCallbacks.onSuccess(text); }
                     @Override public void onError(String utteranceId) {
                         Log.i("TEST_voix", "tryFallbackFromIndex: Android TTS utterance error, trying next");
                         tryFallbackFromIndex(listTTS, index + 1, text, ittsCallbacks);
@@ -5313,17 +5347,38 @@ public class TeamChatBuddyApplication extends BuddyApplication {
             if (validatedVoice != null && !validatedVoice.isEmpty()) {
                 usingReadSpeaker = true;
                 BuddySDK.Speech.setSpeakerVoice(validatedVoice);
+                if (Stop_TTS_ReadSpeaker) {
+                    Log.i("MOUTH_DEBUG", "tryFallbackFromIndex: ReadSpeaker skipped (Stop_TTS_ReadSpeaker=true)");
+                    usingReadSpeaker = false;
+                    return;
+                }
                 try {
                     BuddySDK.Speech.startSpeaking(text, LabialExpression.SPEAK_NEUTRAL, new ITTSCallback.Stub() {
                         @Override
                         public void onSuccess(String iText) throws RemoteException {
                             usingReadSpeaker = false;
+                            Log.i("MOUTH_DEBUG", "TTS ReadSpeaker: onSuccess ✓");
                             new Handler(Looper.getMainLooper()).post(() -> ittsCallbacks.onSuccess(text));
                         }
                         @Override
                         public void onError(String iError) throws RemoteException {
                             usingReadSpeaker = false;
                             Log.e("TEST_voix", "tryFallbackFromIndex: ReadSpeaker error: " + iError);
+                            Log.e("MOUTH_DEBUG", "TTS ReadSpeaker: onError=" + iError + " Stop_TTS_ReadSpeaker=" + Stop_TTS_ReadSpeaker + " retry=" + readSpeakerRetryCount);
+                            if (Stop_TTS_ReadSpeaker) {
+                                Log.w("TEST_voix", "tryFallbackFromIndex: ReadSpeaker arrêté volontairement, fallback ignoré");
+                                return;
+                            }
+                            // Retry at same index when ReadSpeaker coroutine was cancelled (engine not fully released)
+                            if (iError != null && iError.contains("StandaloneCoroutine") && readSpeakerRetryCount < 3) {
+                                readSpeakerRetryCount++;
+                                usingReadSpeaker = true;
+                                Log.i("MOUTH_DEBUG", "tryFallbackFromIndex: RS coroutine cancelled, retry " + readSpeakerRetryCount + "/3 at index " + index + " in 300ms");
+                                new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                                    if (!Stop_TTS_ReadSpeaker) tryFallbackFromIndex(listTTS, index, text, ittsCallbacks);
+                                }, 300);
+                                return;
+                            }
                             new Handler(Looper.getMainLooper()).post(() -> tryFallbackFromIndex(listTTS, index + 1, text, ittsCallbacks));
                         }
                         @Override public void onPause() throws RemoteException {}
@@ -5332,7 +5387,9 @@ public class TeamChatBuddyApplication extends BuddyApplication {
                 } catch (Exception e) {
                     usingReadSpeaker = false;
                     Log.e(TAG, "tryFallbackFromIndex ReadSpeaker exception: " + e.getMessage());
-                    tryFallbackFromIndex(listTTS, index + 1, text, ittsCallbacks);
+                    if (!Stop_TTS_ReadSpeaker) {
+                        tryFallbackFromIndex(listTTS, index + 1, text, ittsCallbacks);
+                    }
                 }
             } else {
                 Log.i("TEST_voix", "tryFallbackFromIndex: ReadSpeaker no voice for " + langCode + ", trying next");
@@ -5351,11 +5408,13 @@ public class TeamChatBuddyApplication extends BuddyApplication {
             }
             String fullLangCode = (langIndex >= 0 && langIndex < googleTTSLangs.size()) ? googleTTSLangs.get(langIndex) : null;
             Log.i("TEST_voix", "tryFallbackFromIndex: ApiGoogle lang=" + fullLangCode);
+            Log.i("MOUTH_DEBUG", "TTS ApiGoogle: launching lang=" + fullLangCode);
             speakGoogleCloudTTS(fullLangCode, text, lastTTSType);
 
         } else if (nextTTS.equalsIgnoreCase("OpenAI")) {
             usingReadSpeaker = false;
             Log.i("TEST_voix", "tryFallbackFromIndex: OpenAI");
+            Log.i("MOUTH_DEBUG", "TTS OpenAI: launching");
             speakOpenAITTS(text, lastTTSType);
 
         } else {
