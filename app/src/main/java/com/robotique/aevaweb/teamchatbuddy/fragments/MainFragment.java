@@ -1439,6 +1439,20 @@ public class MainFragment extends Fragment implements IDBObserver{
                             return;
                         }
 
+                        // 2.5. Buddy traite la question (chatbot en vol, pas encore parlé) → annuler et retour idle
+                        if (teamChatBuddyApplication.getAppIsCurrentlyDealingWithTheQuestion()
+                                && !wasSpeakingResponse
+                                && !teamChatBuddyApplication.isMouthMessagePlaying) {
+                            Log.i("MOUTH_DEBUG", "  → traitement interrompu : annulation + retour idle");
+                            teamChatBuddyApplication.setAppIsCurrentlyDealingWithTheQuestion(false);
+                            if (buddy_texte_resp_lyt != null) buddy_texte_resp_lyt.setVisibility(View.INVISIBLE);
+                            if (buddy_texte_qst_lyt != null) buddy_texte_qst_lyt.setVisibility(View.INVISIBLE);
+                            applySettingsBtnVisibility();
+                            lyt_open_menu_chat.setVisibility(View.VISIBLE);
+                            mouthPendingAction = null;
+                            return;
+                        }
+
                         // 3. Arrêter le mouth message en cours si actif
                         if (teamChatBuddyApplication.isMouthMessagePlaying) {
                             mouthMessageGeneration++;
