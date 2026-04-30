@@ -1404,6 +1404,7 @@ public class MainFragment extends Fragment implements IDBObserver{
                     public void run() {
                         Log.i("MOUTH_DEBUG", "──── Mouth touched ────");
                         Log.i("MOUTH_DEBUG", "  getSpeaking=" + teamChatBuddyApplication.getSpeaking()
+                                + "  isSpeaking=" + isSpeaking
                                 + "  isSpeakingScan=" + isSpeakingScan
                                 + "  isListeningFreeSpeech=" + isListeningFreeSpeech
                                 + "  isMouthMessagePlaying=" + teamChatBuddyApplication.isMouthMessagePlaying
@@ -1414,6 +1415,7 @@ public class MainFragment extends Fragment implements IDBObserver{
 
                         // 1. Annuler les handlers en cours
                         isSplitStreamingNews = false;
+                        boolean wasSpeakingResponse = isSpeaking && !teamChatBuddyApplication.isMouthMessagePlaying;
                         isSpeaking = false;
                         if (iInvitationCallback != null) iInvitationCallback.onEnd("INVITATION_END");
                         if (handler != null && runnable != null) {
@@ -1447,6 +1449,17 @@ public class MainFragment extends Fragment implements IDBObserver{
                             if (buddy_texte_resp_lyt != null) buddy_texte_resp_lyt.setVisibility(View.INVISIBLE);
                             if (buddy_texte_qst_lyt != null) buddy_texte_qst_lyt.setVisibility(View.INVISIBLE);
                             Log.i("MOUTH_DEBUG", "  → mouth message interrompu (gen=" + mouthMessageGeneration + ")");
+                        }
+
+                        // 3.5. Buddy parlait une réponse TTS → arrêter et afficher mouth message stop
+                        if (wasSpeakingResponse) {
+                            mouthMessageGeneration++;
+                            teamChatBuddyApplication.stopTTS(true);
+                            if (buddy_texte_resp_lyt != null) buddy_texte_resp_lyt.setVisibility(View.INVISIBLE);
+                            if (buddy_texte_qst_lyt != null) buddy_texte_qst_lyt.setVisibility(View.INVISIBLE);
+                            mouthPendingAction = "stop";
+                            mouthPendingNotifyEndOfTimer = false;
+                            Log.i("MOUTH_DEBUG", "  → réponse TTS interrompue (wasSpeakingResponse), action=stop gen=" + mouthMessageGeneration);
                         }
 
                         // 4. Déterminer l'action et arrêter le STT immédiatement si en écoute
